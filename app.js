@@ -267,17 +267,17 @@ const EXP = {
   lenha: { name: 'Lenhadores', one: 'lenhador', plot: 'serraria', spot: [13, 1], rate: 14, title: 'Os lenhadores derrubam um pinheiro!' },
   mina:  { name: 'Mineiros', one: 'mineiro', plot: 'pedreira', spot: [2, 2], rate: 11, title: 'Os mineiros quebram a rocha!' }
 };
-const DURS = [{ s: 60, t: '1 min' }, { s: 300, t: '5 min' }, { s: 1800, t: '30 min' }, { s: 7200, t: '2 h' }];
+const DURS = [{ s: 15, t: '15 s' }, { s: 60, t: '1 min' }, { s: 300, t: '5 min' }, { s: 1800, t: '30 min' }];
 const workersMax = k => Math.min(6, 1 + (k === 'lenha' ? S.b.serraria.lvl : S.b.pedreira.lvl));
-const mealsFor = (n, s) => n * Math.max(1, Math.round(s / 300));
+const mealsFor = (n, s) => Math.max(1, Math.ceil(n * s / 300));
 const MEAL_FOOD = 20; // sem despensa, cada refeição sai por 20 de comida
 const mealsHave = () => PANTRY.reduce((a, k) => a + Math.floor(S.pantry[k] || 0), 0);
 const varietyOk = () => PANTRY.filter(k => (S.pantry[k] || 0) >= 1).length >= 3;
 function expYield(k, n, s, fed) {
-  const m = n * s / 60 * (fed ? 1.25 : 1), e = EXP[k];
-  if (k === 'lenha') return { wood: Math.round(m * e.rate * Math.pow(1.25, S.b.serraria.lvl - 1)) };
-  const out = { stone: Math.round(m * e.rate * Math.pow(1.25, Math.max(0, S.b.pedreira.lvl - 1))) };
-  if (S.b.mina.lvl) out.iron = Math.round(m * 4 * Math.pow(1.25, S.b.mina.lvl - 1));
+  const min = s / 60, f = n * (fed ? 1.25 : 1), e = EXP[k]; // base por viagem + por minuto
+  if (k === 'lenha') return { wood: Math.round(f * (18 + min * e.rate) * Math.pow(1.25, S.b.serraria.lvl - 1)) };
+  const out = { stone: Math.round(f * (14 + min * e.rate) * Math.pow(1.25, Math.max(0, S.b.pedreira.lvl - 1))) };
+  if (S.b.mina.lvl) out.iron = Math.round(f * (4 + min * 4) * Math.pow(1.25, S.b.mina.lvl - 1));
   return out;
 }
 const gemChance = () => (1 + .1 * S.b.mina.lvl) * (1 + relic('gem'));
@@ -1193,16 +1193,28 @@ function refreshPiles() {
     for (let i = 0; i < 5; i++) { const g = new THREE.Mesh(new THREE.OctahedronGeometry(.05), new THREE.MeshStandardMaterial({ color: '#f2c94c', emissive: '#6b4a00', metalness: .6, roughness: .3 })); g.position.set(hx - 1.15 + (Math.random() - .5) * .18, .34, hz + .85 + (Math.random() - .5) * .18); piles.add(g); } }
 }
 
-/* árvore e rocha de trabalho */
-let workTree = null, workRock = null;
+/* árvore e rocha de trabalho (usadas nas cenas) */
+let workTree = null, workRock = null, workStump = null, workLog = null;
+const stumpGeo = new THREE.CylinderGeometry(.09, .12, .16, 8), trunkGeo = new THREE.CylinderGeometry(.07, .09, 1, 8);
+const mkStump = s => { const m = mesh(stumpGeo, '#6b4a2b'); m.scale.setScalar(s); m.position.y = .08 * s; const top = mesh(new THREE.CylinderGeometry(.085, .085, .01, 8), '#d6b07a', 0, .081, 0); m.add(top); return m; };
+const mkTrunk = (len, r = 1) => { const m = mesh(trunkGeo, '#7a5230'); m.scale.set(r, len, r); m.rotation.z = Math.PI / 2; m.position.y = .09 * r; return m; };
 function buildWorkSpots() {
   const [tx, tz] = hexPos(...EXP.lenha.spot);
   workTree = new THREE.Group(); workTree.position.set(tx, 0, tz); const t = model('tree_single_A', 1.6); workTree.add(t); scene.add(workTree); workTree.userData.grow = 1;
+  workStump = mkStump(1.6); workStump.position.set(tx, workStump.position.y, tz); workStump.visible = false; scene.add(workStump);
+  workLog = new THREE.Group(); workLog.position.set(tx, 0, tz - .2); const tr = mkTrunk(1.5, 1.4); tr.rotation.set(Math.PI / 2, 0, 0); tr.position.set(0, .12, -.75); workLog.add(tr); workLog.visible = false; scene.add(workLog);
   const [rx, rz] = hexPos(...EXP.mina.spot);
   workRock = new THREE.Group(); workRock.position.set(rx, 0, rz); const r = model('rock_single_A', 2.4); workRock.add(r); scene.add(workRock); workRock.userData.grow = 1;
   [workTree, workRock].forEach(o => o.userData.base = o.children[0].scale.x);
 }
-function regrow(dt) { [workTree, workRock].forEach(o => { if (!o || o.userData.grow >= 1) return; o.userData.grow = Math.min(1, o.userData.grow + dt / 3); const s = o.userData.grow; o.children[0].scale.setScalar(o.userData.base * (.15 + .85 * s)); }); }
+function regrow(dt) {
+  [workTree, workRock].forEach(o => {
+    if (!o || o.userData.grow >= 1 || CINE) return;
+    o.userData.grow = Math.min(1, o.userData.grow + dt / 3); const s = o.userData.grow;
+    o.visible = s > 0; if (s > 0) o.children[0].scale.setScalar(o.userData.base * (.15 + .85 * s));
+    if (o === workTree) { workStump.visible = s < .4; workLog.visible = s < 0; }
+  });
+}
 
 /* picareta feita no código */
 function mkPickaxe() {
@@ -1213,26 +1225,52 @@ function mkPickaxe() {
   return g;
 }
 
-/* equipes das expedições */
+/* equipes das expedições: cada um com sua árvore ou rocha e sua pilha */
 const crews = { lenha: [], mina: [] };
-function crewPos(k, i, n) { const [x, z] = hexPos(...EXP[k].spot), a = (i / Math.max(1, n)) * TAU + .6, r = k === 'lenha' ? .62 : .78; return [x + Math.cos(a) * r, z + Math.sin(a) * r]; }
+const crewAng = (i, n) => (i / Math.max(1, n)) * TAU + .9;
+function crewPos(k, i, n) { const [x, z] = hexPos(...EXP[k].spot), a = crewAng(i, n), r = k === 'lenha' ? .95 : 1.05; return [x + Math.cos(a) * r, z + Math.sin(a) * r]; }
 function mkWorker(k) {
   const c = k === 'lenha' ? mkChar('Barbarian', .3, 'axe_1handed') : mkChar('Knight', .3);
   if (k === 'mina') { const b = findNode(c.o, SLOT.r); if (b) b.add(mkPickaxe()); }
   c.o.traverse(m => { if (m.isMesh) m.castShadow = true; });
   return c;
 }
+const HITS = { lenha: 4, mina: 5 };
+function setupJob(k, c, n, pre) { // árvore/rocha na frente do trabalhador e pilha ao lado
+  const [sx, sz] = hexPos(...EXP[k].spot), a = crewAng(c.i, n), wx = sx + Math.cos(a) * (k === 'lenha' ? .95 : 1.05), wz = sz + Math.sin(a) * (k === 'lenha' ? .95 : 1.05);
+  const fx = Math.cos(a), fz = Math.sin(a), px = -fz, pz = fx; // frente (para fora) e lado
+  c.face = Math.atan2(fx, fz);
+  c.jobPos = [wx + fx * .45, wz + fz * .45]; c.pilePos = [wx + px * .45 - fx * .1, wz + pz * .45 - fz * .1]; c.fallDir = [px, pz];
+  c.job = new THREE.Group(); c.job.position.set(c.jobPos[0], 0, c.jobPos[1]); scene.add(c.job);
+  c.pile = new THREE.Group(); c.pile.position.set(c.pilePos[0], 0, c.pilePos[1]); c.pile.rotation.y = c.face; scene.add(c.pile);
+  c.cut = 0; c.hits = 0; c.state = 'work'; c.t = 0;
+  newTarget(k, c);
+  for (let i = 0; i < pre; i++) addToPile(k, c);
+}
+function newTarget(k, c) {
+  c.job.clear(); c.job.rotation.set(0, 0, 0); c.hits = 0;
+  if (k === 'lenha') { const t = model(Math.random() < .5 ? 'tree_single_A' : 'tree_single_B', 1.05); t.rotation.y = Math.random() * TAU; c.job.add(t); c.target = t; c.job.userData.grow = 0; t.scale.setScalar(.01); }
+  else { const r = model(['rock_single_A', 'rock_single_C', 'rock_single_E'][Math.floor(Math.random() * 3)], 3.4); r.rotation.y = Math.random() * TAU; c.job.add(r); c.target = r; c.job.userData.base = r.scale.x; c.job.userData.grow = 0; r.scale.setScalar(.01); }
+}
+function addToPile(k, c) {
+  const n = c.pile.children.length; if (n >= 7) return;
+  if (k === 'lenha') { const row = n < 4 ? 0 : 1, i = row ? n - 4 : n; const l = mkTrunk(.42, .95); l.rotation.set(0, 0, Math.PI / 2); l.rotation.y = Math.PI / 2; l.position.set((i - (row ? 1 : 1.5)) * .15, .085 + row * .14, 0); c.pile.add(l); }
+  else { const s = mesh(new THREE.DodecahedronGeometry(.075 + Math.random() * .04), Math.random() < .2 ? '#7c8a96' : '#9aa3a8'); const ring = n < 4 ? 0 : 1; s.position.set((Math.random() - .5) * .26, .07 + ring * .09, (Math.random() - .5) * .26); s.rotation.set(Math.random(), Math.random(), 0); c.pile.add(s); }
+}
+function dropCrew(c) { scene.remove(c.o); if (c.job) scene.remove(c.job); if (c.pile) scene.remove(c.pile); if (c.stump) scene.remove(c.stump); if (c.log) scene.remove(c.log); }
 function refreshCrews(now) {
   ['lenha', 'mina'].forEach(k => {
     const e = S.exp[k], want = e ? Math.min(4, e.n) : 0, list = crews[k];
     if (CINE && CINE.kind === k) return;
-    while (list.length > want) scene.remove(list.pop().o);
+    while (list.length > want) dropCrew(list.pop());
     while (list.length < want) {
       const c = mkWorker(k), p = plotById(EXP[k].plot), [hx, hz] = hexPos(p.c, p.r), i = list.length;
-      const fresh = now - e.start < 15000; // recém-saídos vêm andando do prédio
+      const fresh = now - e.start < 6000; // recém-saídos vêm andando do prédio
       const [px, pz] = crewPos(k, i, want);
       c.o.position.set(fresh ? hx + (Math.random() - .5) * .5 : px, 0, fresh ? hz + 1 : pz);
-      Object.assign(c, { i, swing: Math.random(), chip: 0 }); scene.add(c.o); list.push(c);
+      Object.assign(c, { i, swing: Math.random() * .4, chip: 0 }); scene.add(c.o); list.push(c);
+      const pr = Math.min(1, (now - e.start) / (e.s * 1000));
+      setupJob(k, c, want, fresh ? 0 : Math.round(pr * 5));
     }
   });
 }
@@ -1240,15 +1278,44 @@ function stepCrews(dt, now) {
   ['lenha', 'mina'].forEach(k => {
     if (CINE && CINE.kind === k) return;
     const e = S.exp[k]; if (!e) return; const done = now >= e.end, list = crews[k];
-    const [sx, sz] = hexPos(...EXP[k].spot);
     list.forEach(c => {
       c.mixer.update(dt);
+      // árvore/rocha nova crescendo
+      if (c.job.userData.grow < 1) { c.job.userData.grow = Math.min(1, c.job.userData.grow + dt / .8); const g = c.job.userData.grow; c.target.scale.setScalar((k === 'lenha' ? 1.05 : c.job.userData.base) * Math.max(.01, g)); if (g >= 1 && c.stump) { scene.remove(c.stump); c.stump = null; } }
       const [px, pz] = crewPos(k, c.i, list.length), p = c.o.position, dx = px - p.x, dz = pz - p.z, d = Math.hypot(dx, dz);
-      if (d > .05) { const st = Math.min(d, 1.3 * dt); p.x += dx / d * st; p.z += dz / d * st; c.o.rotation.y = Math.atan2(dx, dz); anim(c, 'walk'); return; }
-      c.o.rotation.y = Math.atan2(sx - p.x, sz - p.z);
+      if (d > .05) { const st = Math.min(d, 2.2 * dt); p.x += dx / d * st; p.z += dz / d * st; c.o.rotation.y = Math.atan2(dx, dz); anim(c, 'run'); return; }
+      c.o.rotation.y = c.face;
+      if (c.state === 'fall') { // a árvore cai e vira tronco deitado
+        c.t += dt; const kk = Math.min(1, c.t / .8);
+        c.job.rotation.x = c.fallDir[1] * Math.pow(kk, 2.2) * 1.5; c.job.rotation.z = -c.fallDir[0] * Math.pow(kk, 2.2) * 1.5;
+        if (kk >= 1) {
+          Snd.tone(70, .2, { type: 'sine', v: .06, to: 40 }); burstAt(c.jobPos[0] + c.fallDir[0] * .7, .1, c.jobPos[1] + c.fallDir[1] * .7, '#a08a66', 10, .03);
+          c.job.clear(); c.job.rotation.set(0, 0, 0);
+          c.stump = mkStump(.8); c.stump.position.set(c.jobPos[0], c.stump.position.y, c.jobPos[1]); scene.add(c.stump);
+          c.log = mkTrunk(.9, 1); c.log.rotation.set(0, Math.atan2(c.fallDir[0], c.fallDir[1]), 0); c.log.rotateX(Math.PI / 2); c.log.position.set(c.jobPos[0] + c.fallDir[0] * .45, .07, c.jobPos[1] + c.fallDir[1] * .45); scene.add(c.log);
+          c.state = 'log'; c.t = 0;
+        }
+        return;
+      }
+      if (c.state === 'log') { // o tronco é cortado em toras para a pilha
+        c.t += dt; anim(c, 'idle');
+        if (c.t > 1.4) { scene.remove(c.log); c.log = null; addToPile(k, c); Snd.tone(300, .08, { type: 'square', v: .03 }); c.state = 'work'; if (!done) newTarget(k, c); }
+        return;
+      }
       if (done) { anim(c, 'idle'); return; }
-      if ((c.swing -= dt) <= 0) { c.swing = .9 + Math.random() * .3; anim(c, 'atk', .6); c.chip = .3; }
-      if (c.chip > 0 && (c.chip -= dt) <= 0 && !reduceMotion) burstAt(sx + (p.x - sx) * .5, .45, sz + (p.z - sz) * .5, k === 'lenha' ? '#c9a46a' : '#9aa3a8', 4, .025);
+      if (c.job.userData.grow < 1) { anim(c, 'idle'); return; }
+      if ((c.swing -= dt) <= 0) { c.swing = .85 + Math.random() * .2; anim(c, 'atk', .55); c.chip = .28; }
+      if (c.chip > 0 && (c.chip -= dt) <= 0) {
+        c.hits++; const [jx, jz] = c.jobPos;
+        if (k === 'lenha') {
+          Snd.chop(); burstAt(jx, .3, jz, '#d6b07a', 5, .03); c.target.rotation.z = c.hits % 2 ? .05 : -.05;
+          if (c.hits >= HITS.lenha) { c.state = 'fall'; c.t = 0; Snd.timber(); }
+        } else {
+          Snd.pick(); burstAt(jx, .3, jz, '#ffd27a', 4, .035); burstAt(jx, .25, jz, '#9aa3a8', 3, .03);
+          addToPile(k, c); const left = 1 - c.hits / HITS.mina; c.target.scale.setScalar(c.job.userData.base * Math.max(.15, left));
+          if (c.hits >= HITS.mina) { Snd.crack(); burstAt(jx, .15, jz, '#8e979c', 12, .05); newTarget(k, c); }
+        }
+      }
     });
   });
 }
@@ -1294,7 +1361,8 @@ function popFx(C, name, x, y, z, s, n, floor) { for (let i = 0; i < n; i++) { co
 
 /* lenhadores */
 function cineLenha(e) {
-  const [sx, sz] = hexPos(...EXP.lenha.spot), list = crews.lenha.splice(0);
+  const [sx, sz] = hexPos(...EXP.lenha.spot), list = crews.lenha.splice(0); list.forEach(c => { dropCrew(c); scene.add(c.o); });
+  workTree.visible = true; workTree.userData.grow = 1; workTree.children[0].scale.setScalar(workTree.userData.base); workStump.visible = false; workLog.visible = false;
   while (list.length < Math.min(3, e.n)) { const c = mkWorker('lenha'); scene.add(c.o); list.push(c); }
   const ANG = [-.25, Math.PI + .25, Math.PI * .72];
   list.forEach((c, i) => { const a = ANG[i % 3], r = .6; c.o.position.set(sx + Math.cos(a) * r, 0, sz + Math.sin(a) * r); c.o.rotation.y = Math.atan2(sx - c.o.position.x, sz - c.o.position.z); c.swing = i * .25; });
@@ -1304,14 +1372,14 @@ function cineLenha(e) {
     step(t, dt) {
       list.forEach(c => { c.mixer.update(dt); if (t > .8 && t < 3.6 && (c.swing -= dt) <= 0) { c.swing = .75; anim(c, 'atk', .55); c.hitAt = .3; } if (c.hitAt > 0 && (c.hitAt -= dt) <= 0) { hit++; Snd.chop(); burstAt(sx, .4, sz, '#d6b07a', 7, .035); workTree.rotation.z = (hit % 2 ? .04 : -.04); } if (t >= 3.6) anim(c, 'idle'); });
       if (t >= 3.6 && t < 4.75) { CINE.slow = .45; workTree.rotation.z = 0; const k = Math.min(1, (t - 3.6) / 1.1); workTree.rotation.x = -Math.pow(k, 2.3) * 1.5; }
-      if (t >= 4.75 && !fell) { fell = true; CINE.slow = 1; CINE.shake = .35; Snd.timber(); burstAt(sx, .2, sz - 1.5, '#a08a66', 30, .06); popFx(CINE, 'resource_lumber', sx, .5, sz - .9, .7, 3); }
+      if (t >= 4.75 && !fell) { fell = true; CINE.slow = 1; CINE.shake = .35; Snd.timber(); burstAt(sx, .2, sz - 1.5, '#a08a66', 30, .06); workTree.visible = false; workStump.visible = true; workLog.visible = true; burstAt(sx, 1, sz - 1.4, '#3f7a32', 26, .07); popFx(CINE, 'resource_lumber', sx + .5, .5, sz - .6, .7, 3); }
     },
-    finish() { workTree.rotation.set(0, 0, 0); workTree.userData.grow = 0; },
+    finish() { workTree.rotation.set(0, 0, 0); workTree.visible = false; workStump.visible = true; workLog.visible = true; workTree.userData.grow = -6; },
     card: rewardCard('Madeira cortada!', `${e.n} lenhador${e.n > 1 ? 'es' : ''} voltaram${e.fed ? ' · bem alimentados +25%' : ''}`, e.rew) });
 }
 /* mineiros */
 function cineMina(e) {
-  const [sx, sz] = hexPos(...EXP.mina.spot), list = crews.mina.splice(0);
+  const [sx, sz] = hexPos(...EXP.mina.spot), list = crews.mina.splice(0); list.forEach(c => { dropCrew(c); scene.add(c.o); });
   while (list.length < Math.min(3, e.n)) { const c = mkWorker('mina'); scene.add(c.o); list.push(c); }
   list.forEach((c, i) => { const a = [-.2, Math.PI + .2, -Math.PI / 2][i % 3], r = .8; c.o.position.set(sx + Math.cos(a) * r, 0, sz + Math.sin(a) * r); c.o.rotation.y = Math.atan2(sx - c.o.position.x, sz - c.o.position.z); c.swing = i * .22; });
   const gemList = Object.entries(e.gems || {}).filter(([, v]) => v), best = gemList.length ? gemList.sort((a, b) => GEMS.indexOf(b[0]) - GEMS.indexOf(a[0]))[0][0] : null;
@@ -1658,7 +1726,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) Cloud
 Cloud.init();
 
 /* ========== Vida na vila: ações e telas ========== */
-const Life = { sel: { lenha: { n: 1, d: 1 }, mina: { n: 1, d: 1 } } };
+const Life = { sel: { lenha: { n: 1, d: 0 }, mina: { n: 1, d: 0 } } };
 function payMeals(n) { // tira da despensa (do que tem mais) e completa com comida
   let left = n; const used = {};
   while (left > 0) { const k = PANTRY.filter(x => S.pantry[x] >= 1).sort((a, b) => S.pantry[b] - S.pantry[a])[0]; if (!k) break; S.pantry[k]--; used[k] = (used[k] || 0) + 1; left--; }
