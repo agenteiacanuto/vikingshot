@@ -62,7 +62,49 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 .builder svg{width:22px;height:22px;flex:none}
 .builder span{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .builder.busy span{color:var(--gold-hi)}
-.battle{border:1px solid #5a4632;border-radius:12px;background:linear-gradient(#5a2a22,#341410);padding:6px 10px;font:400 18px var(--display);color:#f3c9bd;opacity:.75}
+.battle{border:2px solid #241708;border-radius:12px;background:linear-gradient(#b5442f,#6d1f14);padding:4px 14px;font:400 20px/1 var(--display);color:#ffe9dc;box-shadow:0 4px 0 #3a0f08;display:grid;place-items:center}
+.battle small{display:block;font:800 11px var(--body);letter-spacing:.06em;color:#ffd2c2;margin-top:2px}
+.battle:active{transform:translateY(3px);box-shadow:0 1px 0 #3a0f08}
+.troops{display:grid;gap:8px;margin-top:8px}
+.troop{display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.28);border-radius:12px;padding:8px 10px}
+.troop.locked{opacity:.6}
+.troop .tt{flex:1;min-width:0}
+.troop .tt b{font:400 20px var(--display);color:var(--gold-hi)}
+.troop .tt small{color:var(--bone-dim);font-weight:800}
+.troop p{margin:2px 0;font-size:13px;line-height:1.3}
+.troop .tstat{color:var(--bone-dim);font-weight:700}
+.troop .costs{margin:4px 0 0;grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
+.troop .cost{padding:3px 6px;font-size:13px}
+.troop .cost svg{width:16px;height:16px}
+.tbtns{display:grid;gap:6px}
+.btn.sm{font-size:18px;padding:5px 12px 6px;min-width:56px}
+/* Batalha */
+body.battle .hud,body.battle #tags .tag{display:none!important}
+.bhud{position:fixed;inset:0;z-index:6;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;
+  padding:calc(env(safe-area-inset-top,0px) + 8px) max(10px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 10px) max(10px,env(safe-area-inset-left,0px))}
+.bhud > *{pointer-events:auto}
+.btop{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+.wavebox,.herobox{background:rgba(15,10,6,.85);border:1px solid #5a4632;border-radius:14px;padding:6px 10px}
+.wavebox b,.herobox b{font:400 19px/1.1 var(--display);color:var(--gold-hi)}
+.wavebox small,.herobox small{display:block;font-size:12px;font-weight:800;color:var(--bone-dim);font-variant-numeric:tabular-nums}
+.hbar{height:10px;border-radius:5px;background:#120d09;border:1px solid #3d3024;overflow:hidden;margin:3px 0}
+.hbar i{display:block;height:100%;width:100%;transition:width .2s}
+.hbar.red i{background:linear-gradient(90deg,#8e2a1d,#e0523f)}
+.hbar.gold i{background:linear-gradient(90deg,#a8761f,#f3d27a)}
+.hbar.green i{background:linear-gradient(90deg,#3f7a32,#7fc56b)}
+.bhint{align-self:center;margin:0;background:rgba(15,10,6,.8);border-radius:999px;padding:6px 14px;font-weight:800;font-size:14px;pointer-events:none}
+.bbot{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:stretch}
+.herobox{display:flex;gap:8px;align-items:center;min-width:0}
+.herobox > div:last-child{flex:1;min-width:0}
+.herobox .hlv{width:38px;height:38px;flex:none;border-radius:10px;background:radial-gradient(circle at 35% 30%,#f5d37e,#a8761f);display:grid;place-items:center;color:#2a1a08;font:400 24px var(--display)}
+.skill{position:relative;overflow:hidden;width:76px;border:2px solid #241708;border-radius:14px;background:radial-gradient(circle at 50% 35%,#f5d37e,#a8761f);color:#2a1a08;font:400 18px var(--display);box-shadow:0 4px 0 #6b4a12}
+.skill span{position:relative;z-index:1}
+.skill i{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(10,6,3,.6)}
+.skill:disabled{cursor:default}
+.skill:not(:disabled){animation:glow 1.2s ease-in-out infinite}
+@keyframes glow{50%{box-shadow:0 4px 0 #6b4a12,0 0 16px #f3d27a}}
+.flee{border:1px solid #5a4632;border-radius:12px;background:rgba(15,10,6,.85);color:var(--bone-dim);font-weight:800;font-size:13px;padding:0 10px}
+.tag .prog.train i{background:linear-gradient(#e7836f,#b5442f)}
 
 /* Sheet */
 .sheet-bg{position:fixed;inset:0;z-index:10;background:rgba(5,8,10,.45)}
@@ -144,7 +186,20 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
   <div class="dock">
     <div class="builder" id="b0"><svg viewBox="0 0 24 24" data-ico="hammer"></svg><span>Livre</span></div>
     <div class="builder" id="b1"><svg viewBox="0 0 24 24" data-ico="hammer"></svg><span>Livre</span></div>
-    <button class="battle" id="btnBattle" aria-label="Batalha (em breve)">Batalha</button>
+    <button class="battle" id="btnBattle" aria-label="Batalha">Batalha<small>Onda 1</small></button>
+  </div>
+</div>
+
+<div class="bhud" id="bhud" hidden>
+  <div class="btop">
+    <div class="wavebox"><b id="bWave">Onda 1</b><div class="hbar red"><i id="bFoes"></i></div><small id="bFoesT"></small></div>
+    <div class="wavebox"><b>Salão do Jarl</b><div class="hbar gold"><i id="bHall"></i></div></div>
+  </div>
+  <p class="bhint" id="bHint">Toque no chão para mover o Jarl</p>
+  <div class="bbot">
+    <div class="herobox"><div class="hlv">ᛉ</div><div><b>Jarl</b><div class="hbar green"><i id="bHero"></i></div><small id="bHeroT"></small></div></div>
+    <button class="skill" id="btnSkill" aria-label="Arremessar machado"><span>Machado</span><i id="bSkillCd"></i></button>
+    <button class="flee" id="btnFlee">Recuar</button>
   </div>
 </div>
 
