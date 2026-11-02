@@ -157,6 +157,8 @@ try { S = JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { S = nu
 if (!S || S.v !== 1) S = fresh();
 PLOTS.forEach(p => { if (!S.b[p.id]) S.b[p.id] = { lvl: 0, buf: 0, end: 0, to: 0 }; });
 if (!S.army) S.army = { war: 0, arc: 0, hus: 0 };
+if (!S.jarl) S.jarl = 'Jarl';
+if (!S.vila) S.vila = 'Vila do Jarl';
 if (!S.wave) S.wave = 1;
 if (S.train === undefined) S.train = null;
 if (S.mv !== 2) { // missões antigas da Etapa 1 -> nova lista com batalhas
@@ -164,7 +166,8 @@ if (S.mv !== 2) { // missões antigas da Etapa 1 -> nova lista com batalhas
   S.mission = MISSIONS.findIndex(m => !done.has(m.t)); if (S.mission < 0) S.mission = MISSIONS.length; S.mv = 2;
 }
 let dirty = true;
-const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
+let cloudDirty = false, leaving = false;
+const save = () => { if (leaving) return; try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} cloudDirty = true; };
 
 /* ========== Som ========== */
 const Snd = {
@@ -220,6 +223,7 @@ function advance(now) {
   S.last = now;
 }
 let finished = [], trainedNow = 0;
+const bootLast = S.last || 0;
 const offlineGain = (() => { const before = JSON.stringify(S.b); const away = Date.now() - S.last; advance(Date.now()); return away > 60e3 ? away : 0; })();
 
 /* ========== Ações ========== */
@@ -259,6 +263,10 @@ function collect(p, silent) {
   b.buf -= take; S.res[d.prod] += take; S.stats[d.prod] = (S.stats[d.prod] || 0) + take;
   floatIcon(p, d.prod, '+' + fmt(take)); if (!silent) Snd.collect();
   dirty = true; save(); return take;
+}
+function missingTxt(c) {
+  const f = Object.entries(c).filter(([k, v]) => (S.res[k] || 0) < v).map(([k, v]) => `${fmt(v - (S.res[k] || 0))} de ${RES_NAME[k].toLowerCase()}`);
+  return 'Falta ' + f.join(' e ') + '. Colete nas bolhas dos prédios ou melhore os produtores.';
 }
 function trainLeftS() { const T = S.train; return T ? Math.max(0, (T.left - 1) * T.per + (T.next - Date.now()) / 1000) : 0; }
 function train(type, n) {
@@ -980,7 +988,7 @@ function renderSheet() {
   } else {
     const c = costFor(p.type, L + 1), req = requirement(p, L + 1), busy = busyBuilders().length >= 2;
     html += `<p class="sub" style="margin-top:10px">${L ? 'Melhorar para nível ' + (L + 1) : 'Construir'} · ${fmtT(timeFor(p.type, L + 1))}</p>${costHTML(c)}
-      ${req ? `<p class="req">${req}</p>` : busy ? '<p class="req">Os dois construtores estão ocupados</p>' : ''}
+      ${req ? `<p class="req">${req}</p>` : busy ? '<p class="req">Os dois construtores estão ocupados</p>' : !canAfford(c) ? `<p class="req">${missingTxt(c)}</p>` : ''}
       <div class="actions"><button class="btn" data-a="up" ${req || busy || !canAfford(c) ? 'disabled' : ''}>${L ? 'Melhorar' : 'Construir'}</button><button class="btn ghost" data-a="close">Fechar</button></div>`;
   }
   openSheet(html);
@@ -1025,7 +1033,7 @@ function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.rem
 
 function renderHUD() {
   $('#res').innerHTML = RES.map(k => { const cap = capFor(k), v = S.res[k]; return `<div class="r${v >= cap ? ' full' : ''}" title="${RES_NAME[k]}">${icoSVG(k)}<span>${fmt(v)}</span></div>`; }).join('');
-  $('#runes').textContent = S.runes; $('#hallLv').textContent = S.b.salao.lvl; $('#power').textContent = 'Poder ' + fmt(power());
+  $('#runes').textContent = S.runes; $('#hallLv').textContent = S.b.salao.lvl; $('#vilaName').textContent = S.vila; $('#power').textContent = 'Poder ' + fmt(power());
   const m = MISSIONS[S.mission], mb = $('#mission');
   $('#missionText').textContent = m ? m.t : 'Fiorde salvo!';
   $('#btnBattle').innerHTML = S.wave > MAXWAVE ? 'Batalha<small>completa</small>' : `Batalha<small>Onda ${S.wave}</small>`;
@@ -1043,6 +1051,156 @@ function renderBuilders() {
   });
 }
 
+
+/* ========== Conta, nuvem e ranking (Supabase) ========== */
+const Cloud = {
+  sb: null, user: null, busy: false, ready: false, lastPush: 0, status: 'off', rankTab: 'power',
+  on() { return !!this.sb; },
+  init() {
+    const cfg = window.VS_CLOUD || {};
+    if (!cfg.url || !cfg.key || !window.supabase) { this.setStatus('off'); return; }
+    this.sb = window.supabase.createClient(cfg.url, cfg.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+    this.sb.auth.onAuthStateChange((ev, session) => {
+      const u = session ? session.user : null, was = this.user && this.user.id;
+      this.user = u; if (!u || was !== u.id) this.ready = false;
+      if (u && was !== u.id) setTimeout(() => this.linked(ev), 0);
+      if (!u) this.setStatus('guest');
+    });
+  },
+  setStatus(s) { this.status = s; const el = $('#cloudDot'); if (el) { el.dataset.s = s; el.title = { off: '', guest: 'Vila só neste aparelho', ok: 'Vila salva na nuvem', sync: 'Salvando…', err: 'Sem conexão com a nuvem' }[s] || ''; } },
+  name() { const u = this.user; if (!u) return ''; const m = u.user_metadata || {}; return m.full_name || m.name || (u.email || '').split('@')[0]; },
+  // chamada ao entrar: decide entre a vila da nuvem e a deste aparelho
+  async linked(ev) {
+    this.setStatus('sync');
+    const { data, error } = await this.sb.from('saves').select('data,updated_at').eq('user_id', this.user.id).maybeSingle();
+    if (error) { this.setStatus('err'); console.warn(error); return; }
+    if (!data) { this.ready = true; if (S.jarl === 'Jarl' && this.name()) S.jarl = this.name().slice(0, 18); S.owner = this.user.id; save(); await this.push(true); toast('Vila salva na nuvem!'); return; }
+    const R = data.data, mine = S.owner === this.user.id;
+    const progress = x => (x.wave || 1) * 1000 + Object.values(x.b || {}).reduce((a, b) => a + (b.lvl || 0), 0);
+    if (mine) { // mesma conta: vale a que foi jogada por último
+      if ((R.last || 0) > bootLast + 5000) this.adopt(R); else { this.ready = true; await this.push(true); }
+      return;
+    }
+    // vila de convidado neste aparelho + vila já existente na conta
+    if (progress(S) <= progress(fresh()) + 1) { this.adopt(R); return; }
+    this.choose(R, progress);
+  },
+  choose(R, progress) {
+    const card = (x, t) => `<div class="stat"><span>${t}</span><span>Salão ${x.b && x.b.salao ? x.b.salao.lvl : 1} · Onda ${x.wave || 1}</span></div>`;
+    openSheet(`<h2>Qual vila continuar?</h2><p class="sub">Esta conta já tem uma vila salva</p>
+      ${card(R, 'Na nuvem: ' + esc(R.vila || 'Vila do Jarl'))}${card(S, 'Neste aparelho: ' + esc(S.vila || 'Vila do Jarl'))}
+      <p class="desc" style="font-size:14px">A outra vila será substituída.</p>
+      <div class="actions"><button class="btn" data-c="cloud">Da nuvem</button><button class="btn ghost" data-c="local">Deste aparelho</button></div>`);
+    sheet.querySelector('[data-c=cloud]').onclick = () => this.adopt(R);
+    sheet.querySelector('[data-c=local]').onclick = async () => { closeSheet(); this.ready = true; S.owner = this.user.id; save(); await this.push(true); toast('Vila salva na nuvem!'); };
+  },
+  adopt(R) {
+    if (B) cleanupBattle();
+    R.owner = this.user.id; R.last = Math.max(R.last || 0, Date.now() - 1000);
+    leaving = true; try { localStorage.setItem(SKEY, JSON.stringify(R)); } catch (e) {}
+    location.reload(); // recomeça com a vila da conta
+  },
+  async push(force) {
+    if (!this.sb || !this.user || !this.ready || this.busy) return; // só depois de decidir qual vila vale
+    if (leaving || (!force && (!cloudDirty || Date.now() - this.lastPush < 30000))) return;
+    this.busy = true; cloudDirty = false; this.setStatus('sync');
+    S.owner = this.user.id;
+    const now = new Date().toISOString();
+    const a = await this.sb.from('saves').upsert({ user_id: this.user.id, data: S, updated_at: now });
+    const b = await this.sb.from('profiles').upsert({ id: this.user.id, jarl: S.jarl || 'Jarl', vila: S.vila || 'Vila do Jarl', power: Math.min(200000, power()), best_wave: Math.min(30, S.wave - 1), updated_at: now });
+    this.busy = false; this.lastPush = Date.now();
+    if (a.error || b.error) { cloudDirty = true; this.setStatus('err'); console.warn(a.error || b.error); } else this.setStatus('ok');
+  },
+  async google() {
+    const { error } = await this.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+    if (error) toast('Não foi possível abrir o Google');
+  },
+  async email(addr) {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(addr)) { toast('E-mail inválido'); Snd.no(); return false; }
+    const { error } = await this.sb.auth.signInWithOtp({ email: addr, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (error) { toast(/rate|limit/i.test(error.message) ? 'Muitos pedidos, tente em alguns minutos' : 'Não foi possível enviar o e-mail'); return false; }
+    return true;
+  },
+  async logout() {
+    await this.push(true);
+    await this.sb.auth.signOut(); this.user = null;
+    // a vila continua neste aparelho como convidado
+    delete S.owner; save(); this.setStatus('guest'); toast('Você saiu da conta');
+  }
+};
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const cleanName = (t, max) => String(t || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
+
+function openProfile() {
+  sheetFor = null;
+  const u = Cloud.user, on = Cloud.on();
+  let acc;
+  if (!on) acc = `<p class="desc" style="font-size:14px">O salvamento na nuvem ainda não foi ativado neste jogo.</p>`;
+  else if (u) acc = `<div class="stat"><span>Conta</span><span class="mail">${esc(u.email || Cloud.name())}</span></div>
+      <div class="stat"><span>Nuvem</span><span>${{ ok: 'Salva ✓', sync: 'Salvando…', err: 'Sem conexão', guest: '' }[Cloud.status] || ''}</span></div>
+      <div class="actions"><button class="btn ghost" data-p="sync">Salvar agora</button><button class="btn ghost" data-p="out">Sair</button></div>`;
+  else acc = `<p class="sub" style="margin-top:12px">Salve sua vila na nuvem</p>
+      <p class="desc" style="font-size:14px">Entre para não perder o progresso, jogar em outro aparelho e aparecer no ranking.</p>
+${(window.VS_CLOUD || {}).google ? `      <button class="btn google" data-p="google"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.8-5.5 3.8-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.2 14.6 2.2 12 2.2 6.6 2.2 2.2 6.6 2.2 12s4.4 9.8 9.8 9.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12z"/></svg>Entrar com Google</button>
+      <div class="or">ou receba um link no e-mail</div>` : '<p class="sub">Receba um link de acesso no e-mail:</p>'}
+      <div class="mailrow"><input id="pfMail" type="email" inputmode="email" autocomplete="email" placeholder="seu@email.com"><button class="btn sm" data-p="mail">Enviar</button></div>`;
+  openSheet(`<h2>Perfil</h2><p class="sub">Poder ${fmt(power())} · Onda ${S.wave > MAXWAVE ? 'todas vencidas' : S.wave}</p>
+    <label class="fld"><span>Nome do Jarl</span><input id="pfJarl" maxlength="18" value="${esc(S.jarl || 'Jarl')}"></label>
+    <label class="fld"><span>Nome da vila</span><input id="pfVila" maxlength="24" value="${esc(S.vila || 'Vila do Jarl')}"></label>
+    ${acc}
+    <div class="actions"><button class="btn" data-p="ok">Pronto</button></div>`);
+}
+function readNames() {
+  if (!$('#pfJarl')) return;
+  const j = cleanName($('#pfJarl').value, 18), v = cleanName($('#pfVila').value, 24);
+  if (j.length >= 2) S.jarl = j; if (v.length >= 2) S.vila = v;
+  save(); dirty = true;
+}
+sheet.addEventListener('change', e => { if (e.target.id === 'pfJarl' || e.target.id === 'pfVila') readNames(); });
+sheet.addEventListener('click', async e => {
+  const a = e.target.closest('[data-p]'); if (!a) return;
+  const k = a.dataset.p; Snd.tap();
+  if (k === 'ok') { readNames(); closeSheet(); Cloud.push(true); }
+  if (k === 'google') Cloud.google();
+  if (k === 'mail') { const addr = $('#pfMail').value.trim(); a.disabled = true; if (await Cloud.email(addr)) { openSheet(`<h2>Confira seu e-mail</h2><p class="desc">Mandamos um link para <b>${esc(addr)}</b>. Abra-o neste aparelho para entrar. Pode demorar um minuto; olhe também o spam.</p><div class="actions"><button class="btn" data-a="close">Ok</button></div>`); } else a.disabled = false; }
+  if (k === 'sync') { await Cloud.push(true); openProfile(); }
+  if (k === 'out') { await Cloud.logout(); openProfile(); }
+});
+
+async function openRanking(tab) {
+  sheetFor = null; Cloud.rankTab = tab || Cloud.rankTab;
+  const t = Cloud.rankTab, head = `<h2>Ranking de Jarls</h2><div class="tabs"><button data-r="power" class="${t === 'power' ? 'on' : ''}">Poder</button><button data-r="wave" class="${t === 'wave' ? 'on' : ''}">Ondas</button></div>`;
+  if (!Cloud.on()) { openSheet(head + `<p class="desc">O ranking ainda não foi ativado.</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`); return; }
+  openSheet(head + `<p class="sub">Carregando…</p>`);
+  let q = Cloud.sb.from('profiles').select('id,jarl,vila,power,best_wave').limit(10);
+  q = t === 'power' ? q.order('power', { ascending: false }) : q.order('best_wave', { ascending: false }).order('power', { ascending: false });
+  const { data, error } = await q;
+  if (sheet.hidden || !sheet.querySelector('.tabs')) return;
+  if (error) { openSheet(head + `<p class="req">Sem conexão com o ranking. Tente de novo.</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`); return; }
+  const me = Cloud.user && Cloud.user.id;
+  const rows = data.map((r, i) => `<div class="rk${r.id === me ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="who"><b>${esc(r.jarl)}</b><small>${esc(r.vila)}</small></span><span class="val">${t === 'power' ? fmt(r.power) : 'Onda ' + r.best_wave}</span></div>`).join('');
+  let foot = '';
+  if (!me) foot = `<p class="desc" style="font-size:14px;margin-top:10px">Entre na sua conta para aparecer no ranking.</p><div class="actions"><button class="btn" data-x="login">Entrar</button><button class="btn ghost" data-a="close">Fechar</button></div>`;
+  else {
+    if (!data.some(r => r.id === me)) {
+      const mine = t === 'power' ? power() : S.wave - 1;
+      const { count } = await Cloud.sb.from('profiles').select('id', { count: 'exact', head: true }).gt(t === 'power' ? 'power' : 'best_wave', mine);
+      if (count != null) foot += `<div class="rk me"><span class="pos">${count + 1}</span><span class="who"><b>${esc(S.jarl || 'Jarl')}</b><small>${esc(S.vila || 'Vila do Jarl')}</small></span><span class="val">${t === 'power' ? fmt(power()) : 'Onda ' + mine}</span></div>`;
+    }
+    foot += `<div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`;
+  }
+  if (sheet.hidden || !sheet.querySelector('.tabs')) return;
+  openSheet(head + `<div class="rklist">${rows || '<p class="desc">Ninguém no ranking ainda. Seja o primeiro!</p>'}</div>` + foot);
+}
+sheet.addEventListener('click', e => {
+  const r = e.target.closest('[data-r]'); if (r) { Snd.tap(); openRanking(r.dataset.r); }
+  if (e.target.closest('[data-x=login]')) { Snd.tap(); openProfile(); }
+});
+$('#btnProfile').addEventListener('click', () => { Snd.init(); Snd.tap(); openProfile(); });
+$('#btnRank').addEventListener('click', () => { Snd.init(); Snd.tap(); openRanking(); });
+setInterval(() => Cloud.push(), 5000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) Cloud.push(true); });
+Cloud.init();
 
 /* ========== Laço do jogo ========== */
 function tick() {
