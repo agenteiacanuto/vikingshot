@@ -52,6 +52,43 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 #cloudDot[data-s=err]{background:var(--bad)}
 .rank{margin-left:auto;width:40px;height:40px;display:grid;place-items:center;background:rgba(15,10,6,.78);border:1px solid #5a4632;border-radius:12px}
 .rank + .runes{margin-left:0}
+.runes.gems{border-color:#6b5a1e;padding-right:10px}
+/* Cenas */
+body.cine .hud,body.cine #tags,body.cine .bhud{display:none!important}
+#cine{position:fixed;inset:0;z-index:15;pointer-events:none}
+#cine .lb{position:absolute;left:0;right:0;height:11vh;background:#000;animation:lbin .5s ease-out both}
+#cine .lb.t{top:0}#cine .lb.b{bottom:0}
+@keyframes lbin{from{transform:scaleY(0)}}
+#cine .lb.t{transform-origin:top}#cine .lb.b{transform-origin:bottom}
+#cineCap{position:absolute;left:0;right:0;bottom:calc(11vh + 14px);text-align:center;font:400 clamp(24px,6vw,40px)/1.1 var(--display);color:var(--gold-hi);text-shadow:0 3px 0 #2a1a08,0 0 18px rgba(0,0,0,.7);opacity:0;transform:translateY(10px);transition:.5s;padding:0 16px}
+#cineCap.show{opacity:1;transform:none}
+#cineSkip{position:absolute;right:max(14px,env(safe-area-inset-right,0px));top:calc(11vh + 12px);pointer-events:auto;border:1px solid #5a4632;border-radius:999px;background:rgba(15,10,6,.8);color:var(--bone);font:800 14px var(--body);padding:7px 14px}
+.costs.big .cost{font-size:20px;padding:10px 12px}.costs.big svg{width:28px;height:28px}
+.costs.inline{display:inline-flex;flex-wrap:wrap;gap:4px;margin:0;justify-content:flex-end}
+.costs.inline .cost{padding:2px 6px;font-size:13px}.costs.inline svg{width:16px;height:16px}
+.exp{background:rgba(0,0,0,.22);border:1px solid #4a3a2a;border-radius:14px;padding:10px 12px;margin:8px 0}
+.exph{display:flex;align-items:baseline;justify-content:space-between}.exph b{font:400 22px var(--display);color:var(--gold-hi)}.exph small{color:var(--bone-dim);font-weight:800}
+.exprow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;font-weight:700}
+.exprow small{color:var(--bone-dim);font-weight:700}.exprow svg{width:18px;height:18px;vertical-align:-3px}
+.stepper{display:flex;align-items:center;gap:10px}.stepper b{min-width:22px;text-align:center;font-size:18px}
+.stepper button{width:36px;height:36px;border-radius:10px;border:1px solid #5a4632;background:rgba(0,0,0,.3);font:800 20px var(--body);color:var(--bone)}
+.stepper button:disabled{opacity:.4}
+.durs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0}
+.durs button{border:1px solid #5a4632;border-radius:10px;background:rgba(0,0,0,.28);color:var(--bone-dim);font:800 14px var(--body);padding:7px 0}
+.durs button.on{background:linear-gradient(#f5d37e,#a8761f);color:#2a1a08;border-color:#241708}
+.ok{color:var(--ok);font-weight:800;margin:4px 0}
+.crops{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-top:6px}
+.crop{display:grid;gap:2px;text-align:left;border:1px solid #5a4632;border-radius:12px;background:rgba(0,0,0,.28);padding:8px 10px;color:var(--bone)}
+.crop b{font:400 18px var(--display);color:var(--gold-hi)}.crop span{font-size:13px;font-weight:700}.crop svg{width:16px;height:16px;vertical-align:-3px}
+.crop small{color:var(--bad);font-weight:800}.crop.locked{opacity:.55}
+.fld-row{width:100%;border:0;color:var(--bone);text-align:left;font:700 15px var(--body)}
+.relics{display:grid;gap:6px}
+.relic{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.28);border-radius:12px;padding:8px 10px}
+.relic > div{flex:1;min-width:0}.relic b{font:400 19px var(--display);color:var(--gold-hi)}.relic p{margin:2px 0;font-size:13px}
+.relic .costs{margin:4px 0 0;grid-template-columns:repeat(auto-fill,minmax(70px,1fr))}.relic .cost{padding:3px 6px;font-size:13px}.relic .cost svg{width:16px;height:16px}
+.relic.own{outline:1px solid var(--ok)}
+.market{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.market .btn{display:flex;align-items:center;justify-content:center;gap:4px;font:800 15px var(--body)}.market svg{width:18px;height:18px}
 .fld{display:grid;gap:4px;margin-bottom:8px}
 .fld span{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--bone-dim)}
 .fld input,.mailrow input{font:700 17px var(--body);color:var(--bone);background:rgba(0,0,0,.35);border:1px solid #5a4632;border-radius:10px;padding:9px 12px;width:100%;-webkit-user-select:text;user-select:text}
@@ -147,6 +184,7 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 .sheet .desc{margin:0 0 12px;line-height:1.4}
 .stat{display:flex;justify-content:space-between;gap:10px;background:rgba(0,0,0,.28);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-weight:700}
 .stat .up{color:var(--ok)}
+.stat svg{width:18px;height:18px;vertical-align:-3px}
 .costs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin:10px 0}
 .cost{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.28);border-radius:10px;padding:6px 8px;font-weight:800;font-variant-numeric:tabular-nums}
 .cost svg{width:20px;height:20px}
@@ -206,6 +244,7 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
   <div class="toprow">
     <button class="jarl" id="btnProfile" aria-label="Perfil e conta"><div class="lv" id="hallLv">1</div><div><b id="vilaName">Vila do Jarl</b><small id="power">Poder 0</small></div><i id="cloudDot" data-s="off"></i></button>
     <button class="rank" id="btnRank" aria-label="Ranking"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M7 4h10v4a5 5 0 0 1-10 0z" fill="#f3d27a" stroke="#6b4a12" stroke-width="1.4"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3" fill="none" stroke="#f3d27a" stroke-width="1.6"/><path d="M12 13v4M8 20h8l-1-3H9z" fill="#d9a441" stroke="#6b4a12" stroke-width="1.2"/></svg></button>
+    <button class="runes gems" id="btnGems" aria-label="Tesouro do Jarl"><svg viewBox="0 0 24 24" width="20" height="20" data-ico="ouro"></svg><span id="gemsN">0</span></button>
     <button class="runes" id="btnRunes" aria-label="Runas"><svg viewBox="0 0 24 24" width="22" height="22" data-ico="runes"></svg><span id="runes">0</span></button>
   </div>
   <div class="res" id="res"></div>
@@ -232,6 +271,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
     <button class="flee" id="btnFlee">Recuar</button>
   </div>
 </div>
+
+<div id="cine" hidden><div class="lb t"></div><div class="lb b"></div><p id="cineCap"></p><button id="cineSkip">Pular ▸▸</button></div>
 
 <div class="sheet-bg" id="sheetBg" hidden></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden></div>
