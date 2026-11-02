@@ -38,9 +38,12 @@ const DEF = {
              desc: 'Extrai minério da montanha. O ferro vira machados, elmos e cotas de malha.' },
   armazem: { name: 'Armazém', size: 2, time: 12, cost: { wood: 100, stone: 60 }, unlock: 2,
              desc: 'Guarda os recursos da vila. Cada nível aumenta o limite de cada recurso.' },
-  quartel: { name: 'Quartel', size: 2, stage2: true, desc: 'Treina guerreiros, arqueiros e cavaleiros. Chega na Etapa 2.' },
-  ferreiro:{ name: 'Ferreiro', size: 2, stage2: true, desc: 'Melhora armas e armaduras das tropas. Chega na Etapa 2.' },
-  torre:   { name: 'Torre de Arqueiros', size: 1, stage2: true, desc: 'Atira flechas nos invasores. Chega na Etapa 2.' }
+  quartel: { name: 'Quartel', size: 2, time: 15, cost: { food: 120, wood: 160, stone: 60 }, unlock: 2,
+             desc: 'Treina guerreiros, arqueiros e huscarls. Cada nível aumenta o tamanho do exército e libera novas tropas.' },
+  ferreiro:{ name: 'Ferreiro', size: 2, time: 18, cost: { wood: 180, stone: 140 }, unlock: 4,
+             desc: 'Forja machados e cotas de malha. Cada nível dá +10% de vida e dano a todas as tropas.' },
+  torre:   { name: 'Torre de Arqueiros', size: 1, time: 14, cost: { wood: 120, stone: 160 }, unlock: 3,
+             desc: 'Atira flechas sozinha nos draugr que chegam perto. Cada nível aumenta o dano.' }
 };
 const PLOTS = [
   { id: 'salao', type: 'salao', c: 7, r: 5 },
@@ -66,7 +69,46 @@ const timeFor = (type, L) => Math.round(DEF[type].time * Math.pow(1.6, L - 1));
 const rateFor = (type, L) => L > 0 && DEF[type].prod ? DEF[type].rate * Math.pow(1.3, L - 1) : 0; // por hora
 const capFor = r => 3000 + (S.b.armazem.lvl ? Math.round(3000 * Math.pow(1.45, S.b.armazem.lvl - 1)) : 0);
 const bufCap = (type, L) => rateFor(type, L) * 2; // guarda até 2h de produção
-const power = () => PLOTS.reduce((a, p) => a + (S.b[p.id] ? S.b[p.id].lvl * (p.type === 'salao' ? 120 : 35) : 0), 0);
+const power = () => PLOTS.reduce((a, p) => a + (S.b[p.id] ? S.b[p.id].lvl * (p.type === 'salao' ? 120 : 35) : 0), 0)
+  + Object.keys(TROOPS).reduce((a, k) => a + (S.army[k] || 0) * TROOPS[k].pow, 0) + (S.wave - 1) * 25;
+
+/* ========== Tropas e ondas ========== */
+const TROOPS = {
+  war: { name: 'Guerreiro', pl: 'Guerreiros', model: 'Barbarian', r: 'axe_1handed', l: 'shield_round_barbarian', hp: 130, dmg: 13, rate: 1.0, range: .9, speed: 1.7,
+         cost: { food: 30, wood: 20 }, time: 6, need: 1, pow: 4, desc: 'Machado e escudo. Segura a linha de frente.' },
+  arc: { name: 'Arqueiro', pl: 'Arqueiros', model: 'Ranger', l: 'bow_withString', hp: 70, dmg: 12, rate: 1.3, range: 6, speed: 1.6, ranged: 'arrow',
+         cost: { food: 30, wood: 35 }, time: 8, need: 2, pow: 5, desc: 'Atira de longe. Frágil de perto.' },
+  hus: { name: 'Huscarl', pl: 'Huscarls', model: 'Knight', r: 'sword_1handed', l: 'shield_round_color', hp: 280, dmg: 24, rate: 1.1, range: 1, speed: 1.8,
+         cost: { food: 60, iron: 25 }, time: 14, need: 4, pow: 10, desc: 'Guarda de elite do Jarl. Muita vida e golpe forte.' }
+};
+const FOES = {
+  minion:  { name: 'Draugr', pl: 'Draugr', model: 'Skeleton_Minion', r: 'Skeleton_Blade', hp: 55, dmg: 7, rate: 1.1, range: .9, speed: 1.5 },
+  warrior: { name: 'Draugr Guerreiro', pl: 'Draugr Guerreiros', model: 'Skeleton_Warrior', r: 'Skeleton_Axe', l: 'Skeleton_Shield_Small_A', hp: 150, dmg: 12, rate: 1.3, range: .9, speed: 1.2 },
+  rogue:   { name: 'Draugr Ágil', pl: 'Draugr Ágeis', model: 'Skeleton_Rogue', r: 'Skeleton_Blade', hp: 75, dmg: 11, rate: .8, range: .9, speed: 2.2 },
+  mage:    { name: 'Feiticeiro Draugr', pl: 'Feiticeiros Draugr', model: 'Skeleton_Mage', r: 'Skeleton_Staff', hp: 65, dmg: 15, rate: 1.8, range: 5, speed: 1.2, ranged: 'bolt' },
+  boss:    { name: 'Rei Draugr', pl: 'Reis Draugr', model: 'Skeleton_Warrior', r: 'Skeleton_Axe', l: 'Skeleton_Shield_Small_A', hp: 1800, dmg: 35, rate: 1.6, range: 1.4, speed: 1.0, scale: .55 }
+};
+const MAXWAVE = 30;
+const armyCap = () => S.b.quartel.lvl ? 4 + 2 * S.b.quartel.lvl : 0;
+const armyCount = () => Object.values(S.army).reduce((a, b) => a + b, 0);
+const queued = () => S.train ? S.train.left : 0;
+const smithBonus = () => 1 + .1 * S.b.ferreiro.lvl;
+const towerDmg = L => Math.round(16 * Math.pow(1.25, L - 1));
+const heroStats = () => { const L = S.b.salao.lvl; return { hp: 450 + 90 * L, dmg: 28 + 6 * L }; };
+function waveDef(w) {
+  const n = Math.min(20, 3 + Math.round(w * .75)), list = [];
+  if (w % 10 === 0) list.push('boss');
+  const pool = ['minion', 'minion']; if (w >= 3) pool.push('warrior'); if (w >= 5) pool.push('rogue'); if (w >= 7) pool.push('mage', 'warrior');
+  let k = w * 7;
+  while (list.length < n) { k = (k * 31 + 7) % 101; list.push(pool[k % pool.length]); }
+  return list;
+}
+function waveReward(w) {
+  const f = Math.pow(1.18, w - 1), r = { food: Math.round(120 * f / 5) * 5, wood: Math.round(120 * f / 5) * 5, stone: Math.round(90 * f / 5) * 5 };
+  if (w >= 3) r.iron = Math.round(50 * f / 5) * 5;
+  r.runes = 5 + (w % 10 === 0 ? 40 : 0) + (w % 5 === 0 ? 10 : 0);
+  return r;
+}
 
 /* ========== Missões ========== */
 const lv = id => S.b[id] ? S.b[id].lvl : 0;
@@ -74,21 +116,33 @@ const MISSIONS = [
   { t: 'Colete comida na Fazenda', ok: () => S.stats.food > 0, r: { wood: 150 } },
   { t: 'Construa a Pedreira', ok: () => lv('pedreira') >= 1, r: { food: 150 } },
   { t: 'Melhore o Salão do Jarl ao nível 2', ok: () => lv('salao') >= 2, r: { runes: 20 } },
+  { t: 'Construa o Quartel', ok: () => lv('quartel') >= 1, r: { food: 250 } },
+  { t: 'Treine 3 Guerreiros no Quartel', ok: () => (S.stats.trained || 0) >= 3, r: { wood: 200 } },
+  { t: 'Vença a Onda 1', ok: () => S.wave > 1, r: { runes: 20 } },
   { t: 'Melhore a Serraria ao nível 2', ok: () => lv('serraria') >= 2, r: { runes: 10 } },
   { t: 'Construa o Armazém', ok: () => lv('armazem') >= 1, r: { stone: 200 } },
   { t: 'Construa a segunda Fazenda', ok: () => lv('faz2') >= 1, r: { wood: 300 } },
-  { t: 'Melhore uma Fazenda ao nível 3', ok: () => Math.max(lv('faz1'), lv('faz2')) >= 3, r: { stone: 300 } },
   { t: 'Melhore o Salão do Jarl ao nível 3', ok: () => lv('salao') >= 3, r: { runes: 30 } },
+  { t: 'Construa uma Torre de Arqueiros', ok: () => Math.max(lv('torre1'), lv('torre2')) >= 1, r: { stone: 300 } },
+  { t: 'Vença a Onda 3', ok: () => S.wave > 3, r: { runes: 20 } },
   { t: 'Construa a Mina de Ferro', ok: () => lv('mina') >= 1, r: { food: 500 } },
+  { t: 'Melhore uma Fazenda ao nível 3', ok: () => Math.max(lv('faz1'), lv('faz2')) >= 3, r: { stone: 300 } },
   { t: 'Colete 500 de ferro', ok: () => S.stats.iron >= 500, r: { wood: 600 } },
   { t: 'Melhore o Salão do Jarl ao nível 4', ok: () => lv('salao') >= 4, r: { runes: 40 } },
+  { t: 'Construa o Ferreiro', ok: () => lv('ferreiro') >= 1, r: { iron: 200 } },
+  { t: 'Melhore o Quartel ao nível 4 (libera Huscarls)', ok: () => lv('quartel') >= 4, r: { food: 800 } },
+  { t: 'Vença a Onda 5', ok: () => S.wave > 5, r: { runes: 30 } },
   { t: 'Melhore a Serraria ao nível 5', ok: () => lv('serraria') >= 5, r: { stone: 800 } },
   { t: 'Melhore o Armazém ao nível 4', ok: () => lv('armazem') >= 4, r: { iron: 300 } },
   { t: 'Melhore o Salão do Jarl ao nível 5', ok: () => lv('salao') >= 5, r: { runes: 50 } },
+  { t: 'Derrote o Rei Draugr na Onda 10', ok: () => S.wave > 10, r: { runes: 60 } },
   { t: 'Deixe todos os produtores no nível 5', ok: () => ['faz1', 'faz2', 'serraria', 'pedreira', 'mina'].every(id => lv(id) >= 5), r: { runes: 60 } },
   { t: 'Melhore o Salão do Jarl ao nível 7', ok: () => lv('salao') >= 7, r: { runes: 80 } },
-  { t: 'Melhore o Salão do Jarl ao nível 10', ok: () => lv('salao') >= 10, r: { runes: 150 } }
+  { t: 'Vença a Onda 20', ok: () => S.wave > 20, r: { runes: 100 } },
+  { t: 'Melhore o Salão do Jarl ao nível 10', ok: () => lv('salao') >= 10, r: { runes: 150 } },
+  { t: 'Vença a Onda 30 e salve o fiorde', ok: () => S.wave > 30, r: { runes: 300 } }
 ];
+const OLD_MISSIONS = ['Colete comida na Fazenda', 'Construa a Pedreira', 'Melhore o Salão do Jarl ao nível 2', 'Melhore a Serraria ao nível 2', 'Construa o Armazém', 'Construa a segunda Fazenda', 'Melhore uma Fazenda ao nível 3', 'Melhore o Salão do Jarl ao nível 3', 'Construa a Mina de Ferro', 'Colete 500 de ferro', 'Melhore o Salão do Jarl ao nível 4', 'Melhore a Serraria ao nível 5', 'Melhore o Armazém ao nível 4', 'Melhore o Salão do Jarl ao nível 5', 'Deixe todos os produtores no nível 5', 'Melhore o Salão do Jarl ao nível 7', 'Melhore o Salão do Jarl ao nível 10'];
 
 /* ========== Estado ========== */
 const SKEY = 'vikingshot-v1';
@@ -102,6 +156,13 @@ let S;
 try { S = JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { S = null; }
 if (!S || S.v !== 1) S = fresh();
 PLOTS.forEach(p => { if (!S.b[p.id]) S.b[p.id] = { lvl: 0, buf: 0, end: 0, to: 0 }; });
+if (!S.army) S.army = { war: 0, arc: 0, hus: 0 };
+if (!S.wave) S.wave = 1;
+if (S.train === undefined) S.train = null;
+if (S.mv !== 2) { // missões antigas da Etapa 1 -> nova lista com batalhas
+  const done = new Set(OLD_MISSIONS.slice(0, S.mission));
+  S.mission = MISSIONS.findIndex(m => !done.has(m.t)); if (S.mission < 0) S.mission = MISSIONS.length; S.mv = 2;
+}
 let dirty = true;
 const save = () => { try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch (e) {} };
 
@@ -120,7 +181,21 @@ const Snd = {
   build() { [0, .12, .24].forEach(d => this.tone(180, .08, { type: 'square', v: .05, delay: d, to: 120 })); },
   done() { [392, 523, 659, 784].forEach((f, i) => this.tone(f, .3, { v: .1, delay: i * .08 })); },
   tap() { this.tone(520, .05, { v: .05 }); },
-  no() { this.tone(200, .15, { type: 'square', v: .04, to: 140 }); }
+  no() { this.tone(200, .15, { type: 'square', v: .04, to: 140 }); },
+  noise(d, v, f = 1800, delay = 0) {
+    if (!S.sound || !this.ctx || this.ctx.state !== 'running') return;
+    const c = this.ctx, t = c.currentTime + delay, len = Math.floor(c.sampleRate * d), buf = c.createBuffer(1, len, c.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    const src = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain(); src.buffer = buf; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 1.2;
+    g.gain.value = v; src.connect(bp); bp.connect(g); g.connect(c.destination); src.start(t);
+  },
+  _hit: 0,
+  hit() { const n = performance.now(); if (n - this._hit < 70) return; this._hit = n; this.noise(.08, .25, 2600 + Math.random() * 1500); this.tone(1400 + Math.random() * 600, .06, { type: 'square', v: .025 }); },
+  shoot() { this.noise(.14, .12, 900); },
+  die() { this.tone(260, .25, { type: 'sawtooth', v: .03, to: 90 }); },
+  crash() { this.noise(.5, .35, 400); this.tone(90, .4, { type: 'sine', v: .12, to: 45 }); },
+  horn() { [[110, 0], [110, .9], [147, 1.4]].forEach(([f, d], i) => { this.tone(f, i === 2 ? 1.4 : .7, { type: 'sawtooth', v: .07, delay: d }); this.tone(f * 1.5, i === 2 ? 1.4 : .7, { type: 'triangle', v: .04, delay: d }); }); },
+  lose() { [392, 330, 262, 196].forEach((f, i) => this.tone(f, .45, { type: 'triangle', v: .09, delay: i * .22 })); }
 };
 
 /* ========== Tempo e produção ========== */
@@ -137,9 +212,14 @@ function advance(now) {
       grow(b.lvl, now - Math.max(endT, start));                 // nível novo depois
     } else grow(b.lvl, dt);
   });
+  const T = S.train;
+  if (T) {
+    while (T.left > 0 && now >= T.next) { S.army[T.type]++; S.stats.trained = (S.stats.trained || 0) + 1; T.left--; T.next += T.per * 1000; trainedNow++; }
+    if (!T.left) S.train = null;
+  }
   S.last = now;
 }
-let finished = [];
+let finished = [], trainedNow = 0;
 const offlineGain = (() => { const before = JSON.stringify(S.b); const away = Date.now() - S.last; advance(Date.now()); return away > 60e3 ? away : 0; })();
 
 /* ========== Ações ========== */
@@ -147,7 +227,6 @@ const busyBuilders = () => PLOTS.filter(p => S.b[p.id].end);
 const canAfford = c => Object.entries(c).every(([k, v]) => (S.res[k] || 0) >= v);
 function requirement(p, L) {
   const d = DEF[p.type];
-  if (d.stage2) return 'Chega na Etapa 2 (batalhas)';
   const hall = S.b.salao.lvl;
   const unlock = p.unlock || d.unlock;
   if (L === 1 && hall < unlock) return `Precisa do Salão do Jarl nível ${unlock}`;
@@ -180,6 +259,21 @@ function collect(p, silent) {
   b.buf -= take; S.res[d.prod] += take; S.stats[d.prod] = (S.stats[d.prod] || 0) + take;
   floatIcon(p, d.prod, '+' + fmt(take)); if (!silent) Snd.collect();
   dirty = true; save(); return take;
+}
+function trainLeftS() { const T = S.train; return T ? Math.max(0, (T.left - 1) * T.per + (T.next - Date.now()) / 1000) : 0; }
+function train(type, n) {
+  const t = TROOPS[type], room = armyCap() - armyCount() - queued();
+  if (S.train && S.train.type !== type) { toast('Espere o treino atual terminar'); Snd.no(); return; }
+  n = Math.min(n, room); if (n <= 0) { toast('Exército cheio: melhore o Quartel'); Snd.no(); return; }
+  const c = {}; for (const k in t.cost) c[k] = t.cost[k] * n;
+  if (!canAfford(c)) { toast('Faltam recursos'); Snd.no(); return; }
+  for (const k in c) S.res[k] -= c[k];
+  if (S.train) S.train.left += n; else S.train = { type, left: n, per: t.time, next: Date.now() + t.time * 1000 };
+  Snd.build(); save(); dirty = true; renderSheet();
+}
+function speedTrain() {
+  const c = Math.ceil(trainLeftS() / 60); if (S.runes < c) { toast('Runas insuficientes'); Snd.no(); return; }
+  S.runes -= c; if (S.train) S.train.next = Date.now() - (S.train.left - 1) * S.train.per * 1000; tick(); renderSheet();
 }
 function claimMission() {
   const m = MISSIONS[S.mission]; if (!m || !m.ok()) return;
@@ -252,12 +346,15 @@ hills_A_trees hills_B_trees hill_single_A trees_A_large trees_A_medium trees_A_s
 rock_single_A rock_single_C rock_single_E building_castle_red building_grain building_windmill_red building_lumbermill_red building_mine_red
 building_market_red building_barracks_red building_blacksmith_red building_tower_A_red building_home_A_red building_home_B_red building_well_red
 building_tavern_red building_dirt building_stage_A building_stage_B building_stage_C building_scaffolding flag_red barrel crate_A_big sack
-resource_lumber resource_stone wheelbarrow tent weaponrack cloud_big cloud_small`.split(/\s+/);
-const CHARS = ['Barbarian', 'Rogue', 'Ranger', 'Knight', 'Rogue_Hooded'];
+resource_lumber resource_stone wheelbarrow tent weaponrack cloud_big cloud_small building_tower_B_red building_destroyed
+axe_1handed axe_2handed sword_1handed shield_round_barbarian shield_round_color bow_withString target`.split(/\s+/);
+const CHARS = ['Barbarian', 'Rogue', 'Ranger', 'Knight', 'Rogue_Hooded', 'Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage'];
+const CHAR_GLTF = ['Skeleton_Axe', 'Skeleton_Blade', 'Skeleton_Shield_Small_A', 'Skeleton_Staff'];
 const ANIMS = ['Rig_Medium_MovementBasic', 'Rig_Medium_General'];
 function loadAll() {
   const jobs = ENV.map(n => loader.loadAsync(`models/env/${n}.gltf`).then(g => { G[n] = g; }))
-    .concat(CHARS.concat(ANIMS).map(n => loader.loadAsync(`models/chars/${n}.glb`).then(g => { G[n] = g; })));
+    .concat(CHARS.concat(ANIMS).map(n => loader.loadAsync(`models/chars/${n}.glb`).then(g => { G[n] = g; })))
+    .concat(CHAR_GLTF.map(n => loader.loadAsync(`models/chars/${n}.gltf`).then(g => { G[n] = g; })));
   return Promise.all(jobs);
 }
 function shadowize(o, cast = true) { o.traverse(m => { if (m.isMesh) { m.castShadow = cast; m.receiveShadow = true; } }); return o; }
@@ -311,7 +408,8 @@ function refreshPlot(p) {
   let g = plotGroups[p.id];
   if (!g) { g = plotGroups[p.id] = new THREE.Group(); const [x, z] = hexPos(p.c, p.r); g.position.set(x, 0, z); scene.add(g); }
   const b = S.b[p.id], L = b.lvl, tier = L >= 7 ? 3 : L >= 4 ? 2 : 1;
-  const sig = [L, b.end ? b.to : 0, tier].join(':');
+  const ruined = B && B.bhp[p.id] !== undefined && B.bhp[p.id] <= 0;
+  const sig = [L, b.end ? b.to : 0, tier, ruined].join(':');
   if (g.userData.sig === sig) return; g.userData.sig = sig;
   g.clear();
   if (!L) {
@@ -319,7 +417,11 @@ function refreshPlot(p) {
     else put(g, 'building_dirt');
     return;
   }
+  if (ruined) { put(g, 'building_destroyed'); return; }
   switch (p.type) {
+    case 'quartel': put(g, 'building_barracks_red'); if (tier >= 2) put(g, 'weaponrack', -.65, .55, .4, .8); if (tier >= 3) put(g, 'target', .7, .5, -.5, .7); break;
+    case 'ferreiro': put(g, 'building_blacksmith_red'); if (tier >= 2) put(g, 'barrel', .65, .55, 0, .7); break;
+    case 'torre': put(g, tier >= 2 ? 'building_tower_B_red' : 'building_tower_A_red'); if (tier >= 3) put(g, 'flag_red', .45, .45, 0, .8); break;
     case 'salao': put(g, 'building_castle_red'); break;
     case 'fazenda': put(g, 'building_grain'); if (tier >= 2) put(g, 'building_windmill_red', .45, -.5, 0, .7); if (tier >= 3) { put(g, 'sack', -.6, .5); put(g, 'wheelbarrow', -.3, .7, .6); } break;
     case 'serraria': put(g, 'building_lumbermill_red'); put(g, 'resource_lumber', -.6, .55, .3, .8); if (tier >= 2) put(g, 'resource_lumber', .6, .55, -.4, .8); break;
@@ -338,9 +440,9 @@ function refreshDecor() {
 }
 
 /* ---------- drakkar, nuvens, fumaça ---------- */
-function buildShip() {
+function buildShip(enemy) {
   const g = new THREE.Group();
-  const wood = new THREE.MeshStandardMaterial({ color: '#6b4527', roughness: .8 });
+  const wood = new THREE.MeshStandardMaterial({ color: enemy ? '#3b3a36' : '#6b4527', roughness: .8 });
   const hull = new THREE.Shape(); hull.moveTo(-1.6, .2); hull.quadraticCurveTo(0, -.55, 1.6, .2); hull.lineTo(1.4, .35); hull.quadraticCurveTo(0, -.2, -1.4, .35); hull.closePath();
   const hg = new THREE.ExtrudeGeometry(hull, { depth: .7, bevelEnabled: false }); hg.translate(0, 0, -.35);
   g.add(new THREE.Mesh(hg, wood));
@@ -348,13 +450,14 @@ function buildShip() {
   [[1.55, 1], [-1.55, -1]].forEach(([x, s]) => { const neck = new THREE.Mesh(new THREE.TorusGeometry(.32, .07, 6, 10, Math.PI), wood); neck.position.set(x, .45, 0); neck.rotation.z = s > 0 ? -Math.PI / 2.4 : Math.PI / 1.7; g.add(neck); });
   const mast = new THREE.Mesh(new THREE.CylinderGeometry(.04, .05, 2.2), wood); mast.position.y = 1.2; g.add(mast);
   const cv = document.createElement('canvas'); cv.width = 64; cv.height = 64; const c = cv.getContext('2d');
-  for (let i = 0; i < 8; i++) { c.fillStyle = i % 2 ? '#efe4cc' : '#a8322b'; c.fillRect(i * 8, 0, 8, 64); }
+  for (let i = 0; i < 8; i++) { c.fillStyle = enemy ? (i % 2 ? '#26302c' : '#5d7a6a') : (i % 2 ? '#efe4cc' : '#a8322b'); c.fillRect(i * 8, 0, 8, 64); }
   const sailTex = new THREE.CanvasTexture(cv); sailTex.colorSpace = THREE.SRGBColorSpace;
   const sail = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.2, 6, 1), new THREE.MeshStandardMaterial({ map: sailTex, side: THREE.DoubleSide }));
   sail.position.set(0, 1.35, 0); sail.rotation.y = Math.PI / 2; g.add(sail); g.userData.sail = sail;
-  const shieldMat = [new THREE.MeshStandardMaterial({ color: '#d9a441' }), new THREE.MeshStandardMaterial({ color: '#a8322b' })];
+  const shieldMat = enemy ? [new THREE.MeshStandardMaterial({ color: '#7d8a80' }), new THREE.MeshStandardMaterial({ color: '#2d3330' })] : [new THREE.MeshStandardMaterial({ color: '#d9a441' }), new THREE.MeshStandardMaterial({ color: '#a8322b' })];
   for (let i = -3; i <= 3; i++) [-.36, .36].forEach((zz, k) => { const s = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .03, 10), shieldMat[(i + k + 6) % 2]); s.rotation.x = Math.PI / 2; s.position.set(i * .32, .22, zz); g.add(s); });
-  shadowize(g); const [x, z] = hexPos(9, 12); g.position.set(x + .3, -.15, z); g.rotation.y = .35; scene.add(g);
+  shadowize(g); if (enemy) return g;
+  const [x, z] = hexPos(9, 12); g.position.set(x + .3, -.15, z); g.rotation.y = .35; scene.add(g);
   return g;
 }
 let ship, clouds = [];
@@ -425,9 +528,11 @@ function updateTags() {
     const lvl = el.querySelector('.lvl'), sign = el.querySelector('.sign'), prog = el.querySelector('.prog'), bub = el.querySelector('.bubble');
     lvl.hidden = !L; if (L) lvl.textContent = L;
     const req = !L && !b.end ? requirement(p, 1) : '';
-    sign.hidden = !!L || !!b.end; if (!L && !b.end) { sign.textContent = req ? (d.stage2 ? 'Etapa 2' : 'Nv ' + (p.unlock || d.unlock)) : 'Construir'; sign.classList.toggle('free', !req); }
-    prog.hidden = !b.end;
+    sign.hidden = !!L || !!b.end; if (!L && !b.end) { sign.textContent = req ? 'Nv ' + (p.unlock || d.unlock) : 'Construir'; sign.classList.toggle('free', !req); }
+    const tr = p.type === 'quartel' && S.train && !b.end;
+    prog.hidden = !b.end && !tr; prog.classList.toggle('train', !!tr);
     if (b.end) { const total = timeFor(p.type, b.to) * 1000, left = b.end - Date.now(); prog.querySelector('i').style.width = Math.max(0, Math.min(100, (1 - left / total) * 100)) + '%'; prog.querySelector('b').textContent = fmtT(left / 1000); }
+    else if (tr) { const T = S.train, part = 1 - (T.next - Date.now()) / (T.per * 1000); prog.querySelector('i').style.width = Math.max(0, Math.min(100, part * 100)) + '%'; prog.querySelector('b').textContent = `⚔ ${T.left} · ${fmtT(trainLeftS())}`; }
     const show = d.prod && L && !b.end && b.buf >= Math.max(20, bufCap(p.type, L) * .08);
     bub.hidden = !show; if (show) { bub.innerHTML = icoSVG(d.prod); bub.classList.toggle('full', b.buf >= bufCap(p.type, L) * .98); }
   });
@@ -460,7 +565,8 @@ cv.addEventListener('pointermove', e => {
 });
 const up = e => {
   pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null;
-  if (drag && !moved && pointers.size === 0) {
+  if (drag && !moved && pointers.size === 0 && B) moveHero(e.clientX, e.clientY);
+  else if (drag && !moved && pointers.size === 0) {
     const p = pickPlot(e.clientX, e.clientY);
     if (p) { const b = S.b[p.id]; if (DEF[p.type].prod && b.lvl && !b.end && b.buf >= 1 && collect(p, true)) Snd.collect(); else Snd.tap(); openBuilding(p); }
   }
@@ -469,12 +575,372 @@ const up = e => {
 cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
 cv.addEventListener('wheel', e => { e.preventDefault(); cam.d *= e.deltaY < 0 ? .9 : 1.1; placeCamera(); }, { passive: false });
 
+/* ---------- batalha na vila ---------- */
+let B = null; // estado da batalha (null = vila em paz)
+const HERO = { name: 'Jarl', model: 'Barbarian', r: 'axe_2handed', scale: .38, range: 1.1, rate: .9, speed: 3 };
+const CLIPS = {};
+const clipsReady = () => { if (!CLIPS.Idle_A) ANIMS.forEach(n => G[n].animations.forEach(a => CLIPS[a.name] = a)); };
+const blobTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); const g = x.createRadialGradient(32, 32, 2, 32, 32, 30); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const blobMat = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false });
+const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const ringGeo = new THREE.RingGeometry(.42, .52, 32).rotateX(-Math.PI / 2);
+const heroRingMat = new THREE.MeshBasicMaterial({ color: '#f3d27a', transparent: true, opacity: .85, depthWrite: false });
+const SLOT = { r: ['handslot.r', 'handslotr'], l: ['handslot.l', 'handslotl'] };
+function findNode(o, names) { let r = null; o.traverse(m => { if (!r && names.includes(m.name)) r = m; }); return r; }
+function arm(o, side, name) { if (!name || !G[name]) return; const b = findNode(o, SLOT[side]); if (!b) return; const w = G[name].scene.clone(true); w.traverse(m => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } }); b.add(w); }
+const ACTS = { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', atk: 'Use_Item', shoot: 'Throw', hit: 'Hit_A', die: 'Death_A', rise: 'Spawn_Ground' };
+const ONCE = ['atk', 'shoot', 'hit', 'die', 'rise'];
+function mkChar(model, scale, wr, wl) {
+  clipsReady();
+  const o = SkeletonUtils.clone(G[model].scene); o.scale.setScalar(scale);
+  o.traverse(m => { if (m.isMesh) { m.castShadow = false; m.receiveShadow = false; m.frustumCulled = false; } });
+  arm(o, 'r', wr); arm(o, 'l', wl);
+  const blob = new THREE.Mesh(blobGeo, blobMat); blob.scale.setScalar(3.4); blob.position.y = .08; blob.renderOrder = 1; o.add(blob);
+  const mixer = new THREE.AnimationMixer(o), act = {};
+  for (const k in ACTS) { act[k] = mixer.clipAction(CLIPS[ACTS[k]]); if (ONCE.includes(k)) { act[k].setLoop(THREE.LoopOnce); act[k].clampWhenFinished = true; } }
+  act.idle.play();
+  return { o, mixer, act, cur: 'idle' };
+}
+function anim(u, k, dur) {
+  if (u.cur === k && !ONCE.includes(k)) return;
+  const a = u.act[k], prev = u.act[u.cur];
+  a.reset(); a.timeScale = dur ? a.getClip().duration / dur : 1; a.fadeIn(.1).play();
+  if (prev && prev !== a) prev.fadeOut(.1);
+  u.cur = k;
+}
+
+/* barras de vida 3D (sprites sempre de frente para a câmera) */
+const barBgMat = new THREE.SpriteMaterial({ color: '#140c06', depthTest: false, transparent: true, opacity: .85 });
+const BAR_COL = { ally: '#7fc56b', enemy: '#e0523f', hero: '#f3d27a', bld: '#f0a43a' };
+function mkBar(kind, w = .7) {
+  const bg = new THREE.Sprite(barBgMat); bg.scale.set(w + .08, .15, 1); bg.renderOrder = 20;
+  const fg = new THREE.Sprite(new THREE.SpriteMaterial({ color: BAR_COL[kind], depthTest: false })); fg.center.set(0, .5); fg.scale.set(w, .09, 1); fg.renderOrder = 21;
+  scene.add(bg, fg); return { bg, fg, w };
+}
+const camRight = new THREE.Vector3();
+function placeBar(bar, x, y, z, k, show) {
+  bar.bg.visible = bar.fg.visible = show; if (!show) return;
+  bar.bg.position.set(x, y, z); bar.fg.position.set(x - camRight.x * bar.w / 2, y, z - camRight.z * bar.w / 2);
+  bar.fg.scale.x = Math.max(.001, bar.w * k);
+}
+function dropBar(bar) { if (!bar) return; scene.remove(bar.bg, bar.fg); bar.fg.material.dispose(); }
+
+/* partículas soltas */
+function burstAt(x, y, z, col, n = 10, sp = .04) {
+  const geo = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), vel = [];
+  for (let i = 0; i < n; i++) { pos.set([x, y, z], i * 3); const a = Math.random() * TAU; vel.push([Math.cos(a) * sp, .03 + Math.random() * .05, Math.sin(a) * sp]); }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: col, size: .16, transparent: true }));
+  scene.add(pts); sparks.push({ pts, vel, life: 1 });
+}
+
+/* projéteis */
+const arrowGeo = new THREE.CylinderGeometry(.02, .02, .55, 4).rotateX(Math.PI / 2);
+const arrowMat = new THREE.MeshBasicMaterial({ color: '#3a2412' });
+const boltGeo = new THREE.SphereGeometry(.13, 8, 6), boltMat = new THREE.MeshBasicMaterial({ color: '#8dffb8' });
+function shoot(kind, sx, sy, sz, target, dmg, side, aoe = 0) {
+  let m;
+  if (kind === 'arrow') m = new THREE.Mesh(arrowGeo, arrowMat);
+  else if (kind === 'bolt') m = new THREE.Mesh(boltGeo, boltMat);
+  else { m = G.axe_1handed.scene.clone(true); m.scale.setScalar(.6); }
+  m.position.set(sx, sy, sz); scene.add(m);
+  const [tx, tz] = posOf(target), d = Math.hypot(tx - sx, tz - sz);
+  B.proj.push({ m, kind, sx, sy, sz, tx, tz, target, t: 0, dur: Math.max(.25, d / (kind === 'axe' ? 11 : 14)), arc: kind === 'bolt' ? .3 : Math.min(2, d * .18), dmg, side, aoe });
+  if (kind !== 'bolt') Snd.shoot();
+}
+
+/* alvos: unidades ou prédios */
+const posOf = t => t.isB ? [t.x, t.z] : [t.o.position.x, t.o.position.z];
+const alive = t => t && (t.isB ? t.hp > 0 : !t.dead && t.on);
+const dist2 = (a, b) => { const [ax, az] = posOf(a), [bx, bz] = posOf(b); return Math.hypot(ax - bx, az - bz); };
+
+function mkUnit(side, kind, x, z) {
+  const hero = kind === 'hero', D = hero ? HERO : side === 'ally' ? TROOPS[kind] : FOES[kind];
+  const w = B.wave, scale = D.scale || .3;
+  const c = mkChar(D.model, scale, D.r, D.l);
+  c.o.position.set(x, 0, z); c.o.visible = false; scene.add(c.o);
+  let hp, dmg;
+  if (hero) { const h = heroStats(); hp = h.hp; dmg = h.dmg; const ring = new THREE.Mesh(ringGeo, heroRingMat); ring.position.y = .05; ring.scale.setScalar(1 / scale * .3 * 2.6); c.o.add(ring); }
+  else if (side === 'ally') { const f = smithBonus(); hp = D.hp * f; dmg = D.dmg * f; }
+  else { hp = D.hp * Math.pow(1.08, w - 1); dmg = D.dmg * Math.pow(1.05, w - 1); }
+  const u = Object.assign(c, { side, kind, D, hp, max: hp, dmg, rate: D.rate, range: D.range, speed: D.speed, ranged: D.ranged,
+    rad: scale / .3 * .3, cd: Math.random() * .5, busy: 0, pend: null, target: null, rt: 0, dead: false, on: false, deadT: 0,
+    bar: mkBar(hero ? 'hero' : side, hero ? .9 : kind === 'boss' ? 1.4 : .6), barY: (kind === 'boss' ? 1.55 : hero ? 1.15 : .95) });
+  B.units.push(u); return u;
+}
+function activate(u, rise) {
+  u.on = true; u.o.visible = true;
+  if (rise) { anim(u, 'rise'); u.busy = 1.3; burstAt(u.o.position.x, .2, u.o.position.z, '#6b5a44', 12, .03); }
+}
+function hurt(t, d) {
+  if (!alive(t) || !B || B.over) return;
+  if (t.isB) {
+    t.hp -= d * .6; B.bhp[t.id] = t.hp;
+    if (t.hp <= 0) { Snd.crash(); burstAt(t.x, 1, t.z, '#5b4a3a', 26, .07); if (t.id === 'salao') endBattle(false); }
+    return;
+  }
+  t.hp -= d; burstAt(t.o.position.x, .5, t.o.position.z, t.side === 'enemy' ? '#d8d2c0' : '#b02a1e', 4, .025); Snd.hit();
+  if (t.hp <= 0) { die(t); return; }
+  if (!t.busy && t.kind !== 'boss' && t.kind !== 'hero' && Math.random() < .25) { anim(t, 'hit', .4); t.busy = .35; }
+}
+function die(u) {
+  u.dead = true; u.pend = null; anim(u, 'die'); u.bar.bg.visible = u.bar.fg.visible = false; Snd.die();
+  if (u.side === 'enemy') B.killed++;
+  if (u.kind === 'hero') { B.heroDown = 8; toast('O Jarl caiu! Ele volta em 8 segundos'); }
+}
+
+function startBattle() {
+  if (B) return;
+  if (S.wave > MAXWAVE) { toast('Todas as ondas foram vencidas!'); return; }
+  Snd.init(); closeSheet();
+  const w = S.wave;
+  B = { wave: w, t: 0, units: [], proj: [], blds: [], bhp: {}, killed: 0, total: 0, queue: [], heroDown: 0, skillCd: 0, over: false, deployed: { ...S.army }, endT: 0 };
+  // prédios viram alvos com vida
+  PLOTS.forEach(p => {
+    const L = S.b[p.id].lvl; if (!L) return; const [x, z] = hexPos(p.c, p.r);
+    const max = p.type === 'salao' ? 1500 + 700 * L : p.type === 'torre' ? 400 + 250 * L : 300 + 180 * L;
+    const t = { isB: true, id: p.id, p, x, z, rad: p.type === 'salao' ? 1.3 : .85, hp: max, max, bar: mkBar('bld', p.type === 'salao' ? 1.6 : 1), cd: 1 };
+    B.blds.push(t); B.bhp[p.id] = max;
+  });
+  // herói
+  const [hx, hz] = hexPos(7, 5);
+  B.hero = mkUnit('ally', 'hero', hx, hz + 1.6); activate(B.hero);
+  // tropas saem do quartel
+  const [qx, qz] = hexPos(10, 8); let k = 0;
+  ['hus', 'war', 'arc'].forEach(type => { for (let i = 0; i < (S.army[type] || 0); i++) { const u = mkUnit('ally', type, qx + (Math.random() - .5) * .6, qz + 1); u.spawnAt = .4 + k++ * .22; B.queue.push(u); } });
+  // inimigos: praia (barco), floresta leste e oeste
+  const list = waveDef(w); B.total = list.length;
+  const first = Math.ceil(list.length * .6);
+  let nb = 0, nf = 0;
+  list.forEach((kind, i) => {
+    const lane = kind === 'boss' || w <= 2 ? 0 : [0, 1, 0, 2][i % 4], late = i >= first;
+    let x, z, at;
+    if (lane === 0) { x = -3 + (Math.random() - .5) * 2.2; z = 10.6 + Math.random() * .6; at = (late ? 19 : 5.6) + (nb++ % 12) * .4; }
+    else { x = lane === 1 ? 16.4 : -16.2; z = (lane === 1 ? -1 : 1.5) + Math.random() * 5; at = (late ? 17 : 2.5) + (nf++ % 10) * .55; }
+    const u = mkUnit('enemy', kind, x, z); u.spawnAt = at; u.rise = lane !== 0; B.queue.push(u);
+  });
+  // drakkar inimigo
+  B.ship = buildShip(true); B.ship.position.set(-3, -.15, 34); B.ship.rotation.y = Math.PI / 2; scene.add(B.ship);
+  document.body.classList.add('battle'); $('#bhud').hidden = false; $('#bWave').textContent = 'Onda ' + w + (w % 10 === 0 ? ' · Chefe' : '');
+  $('#bHint').hidden = false; setTimeout(() => { const h = $('#bHint'); if (h) h.hidden = true; }, 6000);
+  folk.forEach(f => f.o.visible = false); guards.forEach(g => g.o.visible = false);
+  cam.x = 0; cam.z = 3.5; placeCamera();
+  Snd.horn();
+}
+
+function chooseTarget(u) {
+  let best = null, bd = 1e9;
+  const consider = (t, bias = 0) => { if (!alive(t)) return; const d = dist2(u, t) + bias; if (d < bd) { bd = d; best = t; } };
+  if (u.side === 'ally') {
+    B.units.forEach(t => { if (t.side === 'enemy') consider(t); });
+    if (u.kind === 'hero' && bd > 4.5) return null; // o Jarl só caça quem está perto
+  } else {
+    B.units.forEach(t => { if (t.side === 'ally') { const d = dist2(u, t); if (d < 3.2) consider(t); } });
+    if (!best) B.blds.forEach(t => consider(t, t.id === 'salao' ? -2 : 0));
+  }
+  return best;
+}
+function moveToward(u, tx, tz, dt, stopAt) {
+  const p = u.o.position, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+  u.o.rotation.y = Math.atan2(dx, dz);
+  if (d <= stopAt) return true;
+  const st = Math.min(d - stopAt, u.speed * dt); p.x += dx / d * st; p.z += dz / d * st;
+  anim(u, u.speed >= 1.6 ? 'run' : 'walk');
+  return false;
+}
+function strike(u, t) {
+  u.cd = u.rate; u.busy = .5; u.pend = { t: .28, target: t };
+  anim(u, u.ranged ? 'shoot' : 'atk', .55);
+}
+function stepUnit(u, dt) {
+  u.mixer.update(dt);
+  if (u.dead) {
+    u.deadT += dt; if (u.deadT > 2) u.o.position.y -= dt * .5;
+    if (u.deadT > 3.2 && u.o.parent) { scene.remove(u.o); }
+    return;
+  }
+  if (!u.on) return;
+  u.cd -= dt;
+  if (u.pend) {
+    u.pend.t -= dt;
+    if (u.pend.t <= 0) {
+      const t = u.pend.target; u.pend = null;
+      if (alive(t)) {
+        const p = u.o.position;
+        if (u.ranged) shoot(u.ranged, p.x, .7, p.z, t, u.dmg, u.side);
+        else if (dist2(u, t) <= u.range + (t.rad || .3) + .6) hurt(t, u.dmg);
+      }
+    }
+  }
+  if (u.busy > 0) { u.busy -= dt; return; }
+  // ordem do jogador para o Jarl
+  if (u.kind === 'hero' && B.cmd) {
+    if (moveToward(u, B.cmd[0], B.cmd[1], dt, .15)) { B.cmd = null; anim(u, 'idle'); }
+    return;
+  }
+  if ((u.rt -= dt) <= 0 || !alive(u.target)) { u.target = chooseTarget(u); u.rt = .4 + Math.random() * .2; }
+  const t = u.target;
+  if (!t) {
+    if (u.side === 'ally' && u.kind !== 'hero') { // espera em frente ao Salão
+      const i = B.units.indexOf(u); if (moveToward(u, 1.5 + (i % 5) * .6 - 1.2, 3.2 + Math.floor(i / 5) % 3 * .6, dt, .2)) anim(u, 'idle');
+    } else anim(u, 'idle');
+    return;
+  }
+  const [tx, tz] = posOf(t), reach = u.range + (t.rad || .3);
+  if (moveToward(u, tx, tz, dt, reach)) { if (u.cd <= 0) strike(u, t); else if (u.cur === 'walk' || u.cur === 'run') anim(u, 'idle'); }
+}
+function separate() {
+  const L = B.units.filter(u => u.on && !u.dead);
+  for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
+    const a = L[i].o.position, b = L[j].o.position, dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), m = (L[i].rad + L[j].rad) * 1.25;
+    if (d > 0 && d < m) { const push = (m - d) / 2, nx = dx / d * push, nz = dz / d * push; a.x -= nx; a.z -= nz; b.x += nx; b.z += nz; }
+  }
+  L.forEach(u => { const p = u.o.position; if (u.on && u.kind !== 'boss') { p.x = Math.max(-17, Math.min(17.5, p.x)); p.z = Math.max(-9.5, Math.min(11.5, p.z)); } });
+}
+function stepBattle(dt) {
+  if (!B) return;
+  B.t += dt;
+  camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+  // drakkar inimigo chega à praia
+  if (B.ship) { const k = Math.min(1, B.t / 5); B.ship.position.z = 34 - (34 - 12.6) * (1 - Math.pow(1 - k, 2)); B.ship.position.y = -.15 + Math.sin(B.t * 1.4) * .05; B.ship.rotation.z = Math.sin(B.t) * .03; }
+  B.queue = B.queue.filter(u => { if (B.t >= u.spawnAt) { activate(u, u.rise); return false; } return true; });
+  B.units.forEach(u => stepUnit(u, dt));
+  separate();
+  // torres atiram
+  B.blds.forEach(t => {
+    if (t.p.type !== 'torre' || t.hp <= 0) return; t.cd -= dt; if (t.cd > 0) return;
+    let best = null, bd = 7.5; B.units.forEach(u => { if (u.side === 'enemy' && alive(u)) { const d = Math.hypot(u.o.position.x - t.x, u.o.position.z - t.z); if (d < bd) { bd = d; best = u; } } });
+    if (best) { t.cd = 1.2; shoot('arrow', t.x, 2.7, t.z, best, towerDmg(S.b[t.id].lvl), 'ally'); }
+  });
+  // projéteis
+  for (let i = B.proj.length - 1; i >= 0; i--) {
+    const pr = B.proj[i]; pr.t += dt / pr.dur;
+    if (alive(pr.target)) [pr.tx, pr.tz] = posOf(pr.target);
+    const k = Math.min(1, pr.t), x = pr.sx + (pr.tx - pr.sx) * k, z = pr.sz + (pr.tz - pr.sz) * k, y = pr.sy + (.5 - pr.sy) * k + pr.arc * 4 * k * (1 - k);
+    if (pr.kind === 'arrow') pr.m.lookAt(x + (x - pr.m.position.x), y + (y - pr.m.position.y), z + (z - pr.m.position.z));
+    if (pr.kind === 'axe') pr.m.rotation.x += dt * 22;
+    pr.m.position.set(x, y, z);
+    if (pr.t >= 1) {
+      if (pr.aoe) { burstAt(pr.tx, .4, pr.tz, '#f3d27a', 22, .07); Snd.crash(); B.units.forEach(u => { if (u.side === 'enemy' && alive(u) && Math.hypot(u.o.position.x - pr.tx, u.o.position.z - pr.tz) < pr.aoe) hurt(u, pr.dmg); }); }
+      else if (alive(pr.target)) hurt(pr.target, pr.dmg);
+      scene.remove(pr.m); B.proj.splice(i, 1);
+    }
+  }
+  // o Jarl volta
+  const h = B.hero;
+  if (h.dead && (B.heroDown -= dt) <= 0) {
+    const [hx, hz] = hexPos(7, 5); h.dead = false; h.hp = h.max; h.deadT = 0; h.o.position.set(hx, 0, hz + 1.6); if (!h.o.parent) scene.add(h.o);
+    anim(h, 'rise'); h.busy = 1.3; burstAt(hx, .5, hz + 1.6, '#f3d27a', 20); B.cmd = null;
+  }
+  B.skillCd = Math.max(0, B.skillCd - dt);
+  // barras
+  B.units.forEach(u => { if (!u.on || u.dead) { u.bar.bg.visible = u.bar.fg.visible = false; return; } const p = u.o.position; placeBar(u.bar, p.x, u.barY, p.z, u.hp / u.max, u.kind === 'hero' || u.kind === 'boss' || u.hp < u.max); });
+  B.blds.forEach(t => placeBar(t.bar, t.x, (PLOT_H[t.p.type] || 1.5) + .5, t.z, Math.max(0, t.hp) / t.max, t.hp > 0 && t.hp < t.max));
+  if (B.mark) { B.mark.material.opacity -= dt * 1.2; B.mark.scale.multiplyScalar(1 + dt * .6); if (B.mark.material.opacity <= 0) { scene.remove(B.mark); B.mark = null; } }
+  // fim?
+  if (!B.over && !B.queue.some(u => u.side === 'enemy') && !B.units.some(u => u.side === 'enemy' && !u.dead)) { B.endT += dt; if (B.endT > 1.2) endBattle(true); }
+  renderBHUD();
+}
+function renderBHUD() {
+  const hall = B.blds.find(t => t.id === 'salao'), h = B.hero;
+  $('#bFoes').style.width = (100 - B.killed / B.total * 100) + '%'; $('#bFoesT').textContent = `${B.total - B.killed} draugr restantes`;
+  $('#bHall').style.width = Math.max(0, hall.hp / hall.max * 100) + '%';
+  $('#bHero').style.width = (h.dead ? 0 : h.hp / h.max * 100) + '%'; $('#bHeroT').textContent = h.dead ? `volta em ${Math.ceil(B.heroDown)}s` : `${Math.ceil(h.hp)} / ${Math.round(h.max)}`;
+  const sk = $('#btnSkill'); sk.disabled = B.skillCd > 0 || h.dead; $('#bSkillCd').style.height = (B.skillCd / 8 * 100) + '%';
+}
+function heroSkill() {
+  if (!B || B.over) return; const h = B.hero; if (h.dead || B.skillCd > 0) return;
+  let best = null, bd = 9; B.units.forEach(u => { if (u.side === 'enemy' && alive(u)) { const d = dist2(h, u); if (d < bd) { bd = d; best = u; } } });
+  if (!best) { toast('Nenhum draugr ao alcance do machado'); Snd.no(); return; }
+  B.skillCd = 8; B.cmd = null; h.pend = null; h.busy = .55; const [tx, tz] = posOf(best); h.o.rotation.y = Math.atan2(tx - h.o.position.x, tz - h.o.position.z);
+  anim(h, 'shoot', .55);
+  setTimeout(() => { if (B && !h.dead) shoot('axe', h.o.position.x, 1, h.o.position.z, best, h.dmg * 4, 'ally', 1.9); }, 300);
+}
+function moveHero(sx, sy) {
+  if (!B || B.over || B.hero.dead) return;
+  ndc.set(sx / innerWidth * 2 - 1, -(sy / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); ground.constant = 0;
+  if (!ray.ray.intersectPlane(ground, hit)) return;
+  const x = Math.max(-16, Math.min(17, hit.x)), z = Math.max(-9, Math.min(10, hit.z));
+  B.cmd = [x, z]; B.hero.target = null; Snd.tap();
+  if (B.mark) scene.remove(B.mark);
+  B.mark = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#f3d27a', transparent: true, opacity: 1, depthWrite: false })); B.mark.position.set(x, .06, z); scene.add(B.mark);
+}
+function endBattle(win) {
+  if (!B || B.over) return; B.over = true;
+  const w = B.wave, surv = { war: 0, arc: 0, hus: 0 }, lost = { war: 0, arc: 0, hus: 0 };
+  B.units.forEach(u => { if (u.side === 'ally' && u.kind !== 'hero') { if (u.dead) lost[u.kind]++; else surv[u.kind]++; } });
+  for (const k in surv) S.army[k] = Math.max(0, S.army[k] - lost[k]);
+  let rew = null;
+  if (win) {
+    rew = waveReward(w);
+    for (const k in rew) { if (k === 'runes') S.runes += rew[k]; else S.res[k] = Math.min(Math.max(S.res[k], capFor(k)), S.res[k] + rew[k]); }
+    S.wave = w + 1; Snd.done();
+  } else Snd.lose();
+  save(); dirty = true;
+  const lostN = lost.war + lost.arc + lost.hus;
+  const lostTxt = lostN ? Object.entries(lost).filter(([, n]) => n).map(([k, n]) => `${n} ${(n > 1 ? TROOPS[k].pl : TROOPS[k].name).toLowerCase()}`).join(', ') : 'nenhuma tropa';
+  setTimeout(() => {
+    cleanupBattle();
+    openSheet(win
+      ? `<h2>Vitória!</h2><p class="sub">Onda ${w} derrotada${w === MAXWAVE ? ' · o fiorde está salvo!' : ''}</p>
+         <p class="desc">Os draugr voltaram para o mar. Perdas: ${lostTxt}.</p>
+         <div class="costs">${Object.entries(rew).map(([k, v]) => `<div class="cost">${icoSVG(k)}+${fmt(v)}</div>`).join('')}</div>
+         <div class="actions"><button class="btn" data-a="home">Voltar à vila</button></div>`
+      : `<h2>O Salão caiu…</h2><p class="sub">Onda ${w}</p>
+         <p class="desc">A vila se reergue, mas a onda continua lá fora. Perdas: ${lostTxt}. Treine mais tropas, melhore o Ferreiro e as Torres e tente de novo.</p>
+         <div class="actions"><button class="btn" data-a="home">Voltar à vila</button></div>`);
+  }, 1300);
+}
+function fleeBattle() { if (!B || B.over) return; B.over = true; const w = B.wave;
+  const lost = { war: 0, arc: 0, hus: 0 }; B.units.forEach(u => { if (u.side === 'ally' && u.kind !== 'hero' && u.dead) lost[u.kind]++; });
+  for (const k in lost) S.army[k] = Math.max(0, S.army[k] - lost[k]); save(); dirty = true;
+  cleanupBattle(); toast(`Você recuou da Onda ${w}`); }
+function cleanupBattle() {
+  if (!B) return;
+  B.units.forEach(u => { scene.remove(u.o); dropBar(u.bar); });
+  B.blds.forEach(t => dropBar(t.bar)); B.proj.forEach(p => scene.remove(p.m));
+  if (B.ship) scene.remove(B.ship); if (B.mark) scene.remove(B.mark);
+  B = null;
+  document.body.classList.remove('battle'); $('#bhud').hidden = true;
+  folk.forEach(f => f.o.visible = true); refreshGuards(); dirty = true;
+}
+function openWave() {
+  if (B) return; const w = S.wave;
+  if (w > MAXWAVE) { openSheet(`<h2>Fiorde salvo!</h2><p class="desc">Você venceu as ${MAXWAVE} ondas de draugr. Skål, Jarl!</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`); return; }
+  const list = waveDef(w), cnt = {}; list.forEach(k => cnt[k] = (cnt[k] || 0) + 1);
+  const towers = PLOTS.filter(p => p.type === 'torre' && S.b[p.id].lvl).length, n = armyCount();
+  openSheet(`<h2>Onda ${w}</h2><p class="sub">${w % 10 === 0 ? 'O Rei Draugr vem junto!' : 'Draugr pelo mar e pela floresta'}</p>
+    <div class="stat"><span>Inimigos</span><span>${Object.entries(cnt).map(([k, v]) => `${v} ${v > 1 ? FOES[k].pl : FOES[k].name}`).join(' · ')}</span></div>
+    <div class="stat"><span>Seu exército</span><span>${n ? Object.entries(S.army).filter(([, v]) => v).map(([k, v]) => `${v} ${v > 1 ? TROOPS[k].pl : TROOPS[k].name}`).join(' · ') : 'só o Jarl'}</span></div>
+    <div class="stat"><span>Torres</span><span>${towers}</span></div>
+    ${!n ? `<p class="req">${S.b.quartel.lvl ? 'Treine tropas no Quartel antes de lutar.' : 'Construa o Quartel para treinar tropas.'}</p>` : ''}
+    <p class="sub" style="margin-top:10px">Recompensa</p><div class="costs">${Object.entries(waveReward(w)).map(([k, v]) => `<div class="cost">${icoSVG(k)}${fmt(v)}</div>`).join('')}</div>
+    <p class="desc" style="font-size:14px">Toque no chão para mover o Jarl. O botão Machado arremessa o machado no draugr mais próximo.</p>
+    <div class="actions"><button class="btn" data-a="fight">Defender a vila!</button><button class="btn ghost" data-a="close">Agora não</button></div>`);
+}
+$('#btnSkill').addEventListener('click', heroSkill);
+$('#btnFlee').addEventListener('click', () => { Snd.init(); fleeBattle(); });
+
+/* tropas paradas na frente do quartel */
+const guards = []; let guardSig = '';
+function refreshGuards() {
+  if (!G.Barbarian || B) return;
+  const kinds = []; ['hus', 'war', 'arc'].forEach(k => { for (let i = 0; i < Math.min(3, S.army[k]); i++) kinds.push(k); });
+  const pick = kinds.slice(0, 3), sig = S.b.quartel.lvl ? pick.join() : '';
+  if (sig === guardSig) { guards.forEach(g => g.o.visible = true); return; } guardSig = sig;
+  guards.splice(0).forEach(g => scene.remove(g.o));
+  if (!S.b.quartel.lvl) return;
+  const [qx, qz] = hexPos(10, 8);
+  pick.forEach((k, i) => { const t = TROOPS[k], c = mkChar(t.model, .3, t.r, t.l); c.o.position.set(qx - .7 + i * .7, 0, qz + 1.05); c.act.idle.time = i * .3; scene.add(c.o); guards.push(c); });
+}
+
 /* ---------- laço de render ---------- */
 let lastT = performance.now();
 function frame(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
   PLOTS.forEach(refreshPlot);
-  stepFolk(dt);
+  if (B) stepBattle(dt / 1000); else stepFolk(dt);
+  guards.forEach(g => g.mixer.update(dt / 1000));
   if (ship) { ship.position.y = -.15 + Math.sin(now / 900) * .05; ship.rotation.z = Math.sin(now / 1300) * .03; }
   clouds.forEach(c => { c.position.x += dt * .0006; if (c.position.x > 40) c.position.x = -40; });
   if (!reduceMotion && (smokeT -= dt) < 0) { smokeT = 420; spawnSmoke(); }
@@ -497,8 +963,10 @@ function openBuilding(p) {
 function renderSheet() {
   const p = plotById(sheetFor); if (!p) return;
   const b = S.b[p.id], d = DEF[p.type], L = b.lvl;
-  let html = `<h2>${d.name}</h2><p class="sub">${L ? 'Nível ' + L : d.stage2 ? 'Em breve' : 'Terreno livre'}</p><p class="desc">${d.desc}</p>`;
-  if (d.stage2) { openSheet(html + `<div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`); return; }
+  let html = `<h2>${d.name}</h2><p class="sub">${L ? 'Nível ' + L : 'Terreno livre'}</p><p class="desc">${d.desc}</p>`;
+  if (p.type === 'torre' && L) html += `<div class="stat"><span>Dano da flecha</span><span>${towerDmg(L)}${L < MAXLV ? ` <span class="up">→ ${towerDmg(L + 1)}</span>` : ''}</span></div>`;
+  if (p.type === 'ferreiro' && L) html += `<div class="stat"><span>Bônus das tropas</span><span>+${L * 10}%${L < MAXLV ? ` <span class="up">→ +${(L + 1) * 10}%</span>` : ''}</span></div>`;
+  if (p.type === 'quartel' && L) html += trainHTML();
   if (d.prod && L) html += `<div class="stat"><span>Produção</span><span>${fmt(rateFor(p.type, L))} ${RES_NAME[d.prod].toLowerCase()}/h${L < MAXLV ? ` <span class="up">→ ${fmt(rateFor(p.type, L + 1))}</span>` : ''}</span></div>
       <div class="stat"><span>Guardado aqui</span><span>${fmt(b.buf)} / ${fmt(bufCap(p.type, L))}</span></div>`;
   if (p.type === 'armazem' && L) html += `<div class="stat"><span>Limite de cada recurso</span><span>${fmt(capFor('food'))}</span></div>`;
@@ -506,7 +974,7 @@ function renderSheet() {
   if (b.end) {
     const c = speedCost(p);
     html += `<div class="stat"><span>${L ? 'Melhorando para nível ' + b.to : 'Construindo'}</span><span>${fmtT((b.end - Date.now()) / 1000)}</span></div>
-      <div class="actions"><button class="btn rune" data-a="speed">${c ? `Acelerar · ${c} runas` : 'Concluir grátis'}</button><button class="btn ghost" data-a="close">Fechar</button></div>`;
+      <div class="actions"><button class="btn rune" data-a="speed">${c ? `Acelerar · ${c} runa${c > 1 ? 's' : ''}` : 'Concluir grátis'}</button><button class="btn ghost" data-a="close">Fechar</button></div>`;
   } else if (L >= MAXLV) {
     html += `<p class="sub">Nível máximo desta etapa.</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`;
   } else {
@@ -522,18 +990,35 @@ sheet.addEventListener('click', e => {
   if (a.dataset.a === 'close') closeSheet();
   if (a.dataset.a === 'up' && p) upgrade(p);
   if (a.dataset.a === 'speed' && p) speedUp(p);
+  if (a.dataset.a === 'train') train(a.dataset.k, +a.dataset.n);
+  if (a.dataset.a === 'tspeed') speedTrain();
+  if (a.dataset.a === 'fight') { closeSheet(); startBattle(); }
+  if (a.dataset.a === 'home') { closeSheet(); }
   if (a.dataset.a === 'claim') { claimMission(); openMissions(); }
 });
+function trainHTML() {
+  const T = S.train, cap = armyCap(), L = S.b.quartel.lvl, f = smithBonus();
+  let h = `<div class="stat"><span>Exército</span><span>${armyCount()} / ${cap}${T ? ` <span class="up">+${T.left} treinando</span>` : ''}</span></div>`;
+  if (T) h += `<div class="stat"><span>Treinando ${T.left} ${(T.left > 1 ? TROOPS[T.type].pl : TROOPS[T.type].name).toLowerCase()}</span><span>${fmtT(trainLeftS())}</span></div>
+    <div class="actions" style="margin-top:4px"><button class="btn rune" data-a="tspeed">${Math.ceil(trainLeftS() / 60) ? `Acelerar treino · ${Math.ceil(trainLeftS() / 60)} runa${Math.ceil(trainLeftS() / 60) > 1 ? 's' : ''}` : 'Concluir treino'}</button></div>`;
+  h += '<div class="troops">' + Object.entries(TROOPS).map(([k, t]) => {
+    const locked = L < t.need, room = cap - armyCount() - queued(), busy = T && T.type !== k;
+    return `<div class="troop${locked ? ' locked' : ''}"><div class="tt"><b>${t.name}</b> <small>×${S.army[k]}</small><p>${t.desc}</p>
+      <p class="tstat">Vida ${Math.round(t.hp * f)} · Dano ${Math.round(t.dmg * f)}${t.ranged ? ' · à distância' : ''} · ${t.time}s</p>${costHTML(t.cost)}</div>
+      ${locked ? `<p class="req">Quartel nível ${t.need}</p>` : `<div class="tbtns"><button class="btn sm" data-a="train" data-k="${k}" data-n="1" ${room < 1 || busy ? 'disabled' : ''}>+1</button><button class="btn sm" data-a="train" data-k="${k}" data-n="5" ${room < 1 || busy ? 'disabled' : ''}>+5</button></div>`}</div>`;
+  }).join('') + '</div>';
+  return h;
+}
 function openMissions() {
   sheetFor = null;
   const m = MISSIONS[S.mission];
   openSheet(`<h2>Missões</h2><p class="sub">Complete para ganhar recursos e runas.</p>
     ${m ? `<div class="stat"><span>${m.t}</span><span>${m.ok() ? '✓' : ''}</span></div><div class="costs">${Object.entries(m.r).map(([k, v]) => `<div class="cost">${icoSVG(k)}${fmt(v)}</div>`).join('')}</div>
-    <div class="actions"><button class="btn" data-a="claim" ${m.ok() ? '' : 'disabled'}>Resgatar</button><button class="btn ghost" data-a="close">Fechar</button></div>` : '<p class="desc">Todas as missões desta etapa foram cumpridas. A Etapa 2 traz as batalhas!</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>'}
+    <div class="actions"><button class="btn" data-a="claim" ${m.ok() ? '' : 'disabled'}>Resgatar</button><button class="btn ghost" data-a="close">Fechar</button></div>` : '<p class="desc">Todas as missões foram cumpridas. O fiorde está salvo, Jarl!</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>'}
     <div class="mlist">${MISSIONS.map((x, i) => `<div class="mitem${i < S.mission ? ' done' : i === S.mission ? ' cur' : ''}">${i < S.mission ? '✓' : i + 1}. ${x.t}</div>`).join('')}</div>`);
 }
 $('#mission').addEventListener('click', () => { Snd.init(); Snd.tap(); const m = MISSIONS[S.mission]; if (m && m.ok()) claimMission(); else openMissions(); });
-$('#btnBattle').addEventListener('click', () => { Snd.init(); toast('As batalhas chegam na Etapa 2'); });
+$('#btnBattle').addEventListener('click', () => { Snd.init(); Snd.tap(); openWave(); });
 $('#btnRunes').addEventListener('click', () => { Snd.init(); toast('Runas aceleram obras. Ganhe completando missões.'); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
@@ -542,7 +1027,8 @@ function renderHUD() {
   $('#res').innerHTML = RES.map(k => { const cap = capFor(k), v = S.res[k]; return `<div class="r${v >= cap ? ' full' : ''}" title="${RES_NAME[k]}">${icoSVG(k)}<span>${fmt(v)}</span></div>`; }).join('');
   $('#runes').textContent = S.runes; $('#hallLv').textContent = S.b.salao.lvl; $('#power').textContent = 'Poder ' + fmt(power());
   const m = MISSIONS[S.mission], mb = $('#mission');
-  $('#missionText').textContent = m ? m.t : 'Etapa 1 completa!';
+  $('#missionText').textContent = m ? m.t : 'Fiorde salvo!';
+  $('#btnBattle').innerHTML = S.wave > MAXWAVE ? 'Batalha<small>completa</small>' : `Batalha<small>Onda ${S.wave}</small>`;
   mb.classList.toggle('done', !!(m && m.ok()));
   const old = mb.querySelector('.claim'); if (old) old.remove();
   if (m && m.ok()) { const c = document.createElement('span'); c.className = 'claim'; c.textContent = 'Resgatar'; mb.appendChild(c); }
@@ -560,14 +1046,15 @@ function renderBuilders() {
 
 /* ========== Laço do jogo ========== */
 function tick() {
-  finished = []; advance(Date.now());
+  finished = []; trainedNow = 0; advance(Date.now());
+  if (trainedNow) { dirty = true; refreshGuards(); if (sheetFor === 'quartel' && !sheet.hidden) renderSheet(); }
   finished.forEach(id => { const p = plotById(id); Snd.done(); burst(p, '#f3d27a', 24); toast(`${DEF[p.type].name} chegou ao nível ${S.b[id].lvl}!`); dirty = true; });
   if (finished.length) refreshDecor();
   if (finished.length && sheetFor) renderSheet();
   renderBuilders();
   if (dirty) { renderHUD(); save(); dirty = false; }
 }
-setInterval(() => { tick(); if (sheetFor && !sheet.hidden && S.b[sheetFor] && S.b[sheetFor].end) renderSheet(); }, 1000);
+setInterval(() => { tick(); if (sheetFor && !sheet.hidden && S.b[sheetFor] && (S.b[sheetFor].end || (sheetFor === 'quartel' && S.train))) renderSheet(); }, 1000);
 setInterval(() => { dirty = true; }, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); dirty = true; } else save(); });
 
@@ -577,17 +1064,17 @@ addEventListener('resize', resize);
 resize(); renderHUD(); renderBuilders();
 loadAll().then(() => {
   buildTerrain(); ship = buildShip();
-  for (let i = 0; i < 6; i++) { const c = model(i % 2 ? 'cloud_small' : 'cloud_big', 2.2); c.traverse(m => { if (m.isMesh) m.castShadow = false; }); c.position.set(-35 + i * 13, 9 + (i % 3), -14 + (i % 2) * 10); scene.add(c); clouds.push(c); }
-  buildFolk(); buildTags(); refreshDecor();
+  for (let i = 0; i < 6; i++) { const c = model(i % 2 ? 'cloud_small' : 'cloud_big', 2.2); c.traverse(m => { if (m.isMesh) m.castShadow = false; }); c.position.set(-35 + i * 13, 15 + (i % 3), -26 + (i % 2) * 6); scene.add(c); clouds.push(c); }
+  buildFolk(); buildTags(); refreshDecor(); refreshGuards();
   $('#loading').classList.add('done'); setTimeout(() => $('#loading').remove(), 600);
   renderer.setAnimationLoop(frame);
   if (!S.intro) {
     openSheet(`<h2>Bem-vindo, Jarl!</h2><p class="sub">Sua vila no fiorde</p>
       <p class="desc">Construa e melhore os prédios, colete recursos tocando nas bolhas acima deles e cumpra as missões. Arraste para mover a vila e use dois dedos para aproximar.</p>
-      <p class="desc">Na Etapa 2 chegam os invasores: draugr, trolls e gigantes de gelo. Prepare a vila!</p>
+      <p class="desc">Os draugr virão pelo mar e pela floresta. Construa o Quartel, treine tropas e toque em <b>Batalha</b> quando estiver pronto.</p>
       <div class="actions"><button class="btn" data-a="close">Começar</button></div>`);
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-window.__vs = { S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera };
+window.__vs = { S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B && !B.over) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
