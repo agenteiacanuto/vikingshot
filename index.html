@@ -159,7 +159,11 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 .hbar.gold i{background:linear-gradient(90deg,#a8761f,#f3d27a)}
 .hbar.green i{background:linear-gradient(90deg,#3f7a32,#7fc56b)}
 .bhint{align-self:center;margin:0;background:rgba(15,10,6,.8);border-radius:999px;padding:6px 14px;font-weight:800;font-size:14px;pointer-events:none}
-.bbot{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:stretch}
+.bbot{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:stretch}
+.camb{width:46px;border:1px solid #5a4632;border-radius:12px;background:rgba(15,10,6,.85);display:grid;place-items:center}
+.camb svg{width:24px;height:24px}.camb.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset}
+.dmg{position:absolute;left:0;top:0;font:800 16px var(--body);text-shadow:0 2px 0 #000,0 0 4px #000;pointer-events:none;white-space:nowrap;will-change:transform}
+.dmg.big{font:400 26px var(--display)}
 .herobox{display:flex;gap:8px;align-items:center;min-width:0}
 .herobox > div:last-child{flex:1;min-width:0}
 .herobox .hlv{width:38px;height:38px;flex:none;border-radius:10px;background:radial-gradient(circle at 35% 30%,#f5d37e,#a8761f);display:grid;place-items:center;color:#2a1a08;font:400 24px var(--display)}
@@ -268,6 +272,7 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
   <div class="bbot">
     <div class="herobox"><div class="hlv">ᛉ</div><div><b>Jarl</b><div class="hbar green"><i id="bHero"></i></div><small id="bHeroT"></small></div></div>
     <button class="skill" id="btnSkill" aria-label="Arremessar machado"><span>Machado</span><i id="bSkillCd"></i></button>
+    <button class="camb on" id="btnCam" aria-label="Câmera de ação"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="13" height="10" rx="2" fill="#efe4cc"/><path d="M16 10l5-3v10l-5-3z" fill="#efe4cc"/><circle cx="9.5" cy="12" r="2.4" fill="#2b1f16"/></svg></button>
     <button class="flee" id="btnFlee">Recuar</button>
   </div>
 </div>
