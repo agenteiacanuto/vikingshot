@@ -51,6 +51,8 @@ const DEF = {
              desc: 'Guarda os recursos da vila. Cada nível aumenta o limite de cada recurso.' },
   quartel: { name: 'Quartel', size: 2, time: 15, cost: { food: 120, wood: 160, stone: 60 }, unlock: 2,
              desc: 'Treina guerreiros, arqueiros e huscarls. Cada nível aumenta o tamanho do exército e libera novas tropas.' },
+  muralha: { name: 'Muralha', size: 0, time: 25, cost: { wood: 300, stone: 220 }, unlock: 3,
+             desc: 'Cerca a vila pela praia e pelas florestas. Os draugr precisam derrubá-la antes de entrar. Até o nível 3 é uma paliçada de troncos; no 4 vira muralha de pedra; no 7 ganha torres de arqueiros.' },
   horta:   { name: 'Horta e Pomar', size: 2, time: 12, cost: { wood: 110, food: 60 }, unlock: 2,
              desc: 'Plante frutas, legumes e verduras nos canteiros. Elas crescem à vista e alimentam os trabalhadores. Cada nível libera novas plantas e mais canteiros.' },
   curral:  { name: 'Curral', size: 2, time: 14, cost: { wood: 160, stone: 50 }, unlock: 2,
@@ -73,6 +75,7 @@ const PLOTS = [
   { id: 'torre1', type: 'torre', c: 13, r: 8 },
   { id: 'torre2', type: 'torre', c: 2, r: 9 },
   { id: 'horta', type: 'horta', c: 3, r: 7 },
+  { id: 'muralha', type: 'muralha', c: 7, r: 10 },
   { id: 'curral', type: 'curral', c: 12, r: 7 }
 ];
 const plotById = id => PLOTS.find(p => p.id === id);
@@ -170,6 +173,7 @@ const MISSIONS = [
   { t: 'Recolha leite e ovos no Curral', ok: () => (S.stats.curral || 0) >= 1, r: { runes: 10 } },
   { t: 'Melhore o Salão do Jarl ao nível 3', ok: () => lv('salao') >= 3, r: { runes: 30 } },
   { t: 'Construa uma Torre de Arqueiros', ok: () => Math.max(lv('torre1'), lv('torre2')) >= 1, r: { stone: 300 } },
+  { t: 'Construa a Muralha', ok: () => lv('muralha') >= 1, r: { stone: 400 } },
   { t: 'Mande os mineiros à montanha', ok: () => (S.stats.expMina || 0) >= 1, r: { wood: 300 } },
   { t: 'Encontre uma pedra preciosa', ok: () => !!S.stats.gemFound, r: { runes: 20 } },
   { t: 'Vença a Onda 3', ok: () => S.wave > 3, r: { runes: 20 } },
@@ -184,9 +188,10 @@ const MISSIONS = [
   { t: 'Melhore o Armazém ao nível 4', ok: () => lv('armazem') >= 4, r: { iron: 300 } },
   { t: 'Melhore o Salão do Jarl ao nível 5', ok: () => lv('salao') >= 5, r: { runes: 50 } },
   { t: 'Forje uma relíquia no Tesouro do Jarl', ok: () => Object.keys(S.relics).length >= 1, r: { runes: 30 } },
+  { t: 'Erga a muralha de pedra (nível 4)', ok: () => lv('muralha') >= 4, r: { runes: 30 } },
   { t: 'Derrote o Rei Draugr na Onda 10', ok: () => S.wave > 10, r: { runes: 60 } },
   { t: 'Deixe todos os produtores no nível 5', ok: () => ['faz1', 'faz2', 'serraria', 'pedreira', 'mina'].every(id => lv(id) >= 5), r: { runes: 60 } },
-  { t: 'Melhore o Salão do Jarl ao nível 7', ok: () => lv('salao') >= 7, r: { runes: 80 } },
+  { t: 'Transforme o Salão no Castelo Viking (nível 7)', ok: () => lv('salao') >= 7, r: { runes: 80 } },
   { t: 'Vença a Onda 20', ok: () => S.wave > 20, r: { runes: 100 } },
   { t: 'Melhore o Salão do Jarl ao nível 10', ok: () => lv('salao') >= 10, r: { runes: 150 } },
   { t: 'Vença a Onda 30 e salve o fiorde', ok: () => S.wave > 30, r: { runes: 300 } }
@@ -461,7 +466,7 @@ rock_single_A rock_single_C rock_single_E building_castle_red building_grain bui
 building_market_red building_barracks_red building_blacksmith_red building_tower_A_red building_home_A_red building_home_B_red building_well_red
 building_tavern_red building_dirt building_stage_A building_stage_B building_stage_C building_scaffolding flag_red barrel crate_A_big sack
 resource_lumber resource_stone wheelbarrow tent weaponrack cloud_big cloud_small building_tower_B_red building_destroyed
-axe_1handed axe_2handed sword_1handed shield_round_barbarian shield_round_color bow_withString target`.split(/\s+/);
+wall_straight wall_straight_gate axe_1handed axe_2handed sword_1handed shield_round_barbarian shield_round_color bow_withString target`.split(/\s+/);
 const CHARS = ['Barbarian', 'Rogue', 'Ranger', 'Knight', 'Rogue_Hooded', 'Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage'];
 const CHAR_GLTF = ['Skeleton_Axe', 'Skeleton_Blade', 'Skeleton_Shield_Small_A', 'Skeleton_Staff'];
 const ANIMS = ['Rig_Medium_MovementBasic', 'Rig_Medium_General'];
@@ -517,7 +522,7 @@ function buildTerrain() {
 
 /* ---------- prédios ---------- */
 const plotGroups = {};
-const PLOT_H = { horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
+const PLOT_H = { muralha: 1.3, horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
 function put(g, n, x = 0, z = 0, rot = 0, s = 1) { const o = model(n, s); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); return o; }
 function refreshPlot(p) {
   let g = plotGroups[p.id];
@@ -527,6 +532,7 @@ function refreshPlot(p) {
   const sig = [L, b.end ? b.to : 0, tier, ruined].join(':');
   if (g.userData.sig === sig) return; g.userData.sig = sig;
   g.clear();
+  if (p.type === 'muralha') { if (b.end) put(g, 'building_scaffolding', 0, -.6, 0, .9); return; }
   if (!L) {
     if (b.end) { const total = timeFor(p.type, b.to) * 1000, pr = 1 - (b.end - Date.now()) / total; put(g, pr < .34 ? 'building_stage_A' : pr < .67 ? 'building_stage_B' : 'building_stage_C'); g.userData.sig += ':' + (pr < .34 ? 'a' : pr < .67 ? 'b' : 'c'); }
     else put(g, 'building_dirt');
@@ -543,7 +549,19 @@ function refreshPlot(p) {
     case 'quartel': put(g, 'building_barracks_red'); if (tier >= 2) put(g, 'weaponrack', -.65, .55, .4, .8); if (tier >= 3) put(g, 'target', .7, .5, -.5, .7); break;
     case 'ferreiro': put(g, 'building_blacksmith_red'); if (tier >= 2) put(g, 'barrel', .65, .55, 0, .7); break;
     case 'torre': put(g, tier >= 2 ? 'building_tower_B_red' : 'building_tower_A_red'); if (tier >= 3) put(g, 'flag_red', .45, .45, 0, .8); break;
-    case 'salao': put(g, 'building_castle_red'); break;
+    case 'salao':
+      if (tier === 1) { put(g, 'building_castle_red'); break; }
+      if (tier === 2) { put(g, 'building_castle_red'); [-.82, .82].forEach(x => { put(g, 'building_tower_A_red', x, .55, 0, .55); put(g, 'flag_red', x, 1.35, 0, 1.4); }); break; }
+      { // Castelo Viking
+        const c = put(g, 'building_castle_red', 0, -.1, 0, 1.12);
+        [[-.95, -.75], [.95, -.75], [-.95, .7], [.95, .7]].forEach(([x, z]) => { put(g, 'building_tower_B_red', x, z, 0, .5); put(g, 'flag_red', x, 1.24, z, 1.6); });
+        [[0, -1.02, 0], [-1.02, 0, Math.PI / 2], [1.02, 0, Math.PI / 2]].forEach(([x, z, r]) => { const w = put(g, 'wall_straight', x, z, r, .5); });
+        put(g, 'wall_straight_gate', 0, 1.02, 0, .5);
+        const shM = [mat('#a8322b'), mat('#d9a441')];
+        for (let i = -3; i <= 3; i++) { const sh = new THREE.Mesh(new THREE.CylinderGeometry(.075, .075, .02, 10), shM[(i + 9) % 2]); sh.rotation.x = Math.PI / 2; sh.position.set(i * .22, .32, 1.27); g.add(sh); }
+        const head = mesh(new THREE.TorusGeometry(.16, .045, 6, 10, Math.PI * 1.2), '#6b4527', 0, 4.35, .35); head.rotation.set(0, Math.PI / 2, .3); g.add(head);
+      }
+      break;
     case 'fazenda': put(g, 'building_grain'); if (tier >= 2) put(g, 'building_windmill_red', .45, -.5, 0, .7); if (tier >= 3) { put(g, 'sack', -.6, .5); put(g, 'wheelbarrow', -.3, .7, .6); } break;
     case 'serraria': put(g, 'building_lumbermill_red'); put(g, 'resource_lumber', -.6, .55, .3, .8); if (tier >= 2) { const w = shadowize(G.Wagon.scene.clone(true)); w.scale.setScalar(.42 / heightOf(w)); w.position.set(.75, 0, .45); w.rotation.y = 2.4; g.add(w); } break;
     case 'pedreira': put(g, 'hill_single_A', 0, -.2); put(g, 'resource_stone', .4, .5, 0, .9); if (tier >= 2) put(g, 'wheelbarrow', -.4, .6, 1); if (tier >= 3) put(g, 'resource_stone', -.5, -.1, 1, .8); break;
@@ -686,6 +704,7 @@ cv.addEventListener('pointermove', e => {
   if (pinch && pointers.size === 2) { const [a, b] = [...pointers.values()]; cam.d = pinch.cd * pinch.d / Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])); placeCamera(); return; }
   if (drag) {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+    if (moved && B) { if (B.cut || B.ending) return; if (B.follow) toggleFollow(); }
     if (moved) { const k = 2 * cam.d * Math.tan(camera.fov * Math.PI / 360) / innerHeight; cam.x = drag.cx - dx * k; cam.z = drag.cz - dy * k / Math.sin(cam.pitch); placeCamera(); }
   }
 });
@@ -718,8 +737,8 @@ const heroRingMat = new THREE.MeshBasicMaterial({ color: '#f3d27a', transparent:
 const SLOT = { r: ['handslot.r', 'handslotr'], l: ['handslot.l', 'handslotl'] };
 function findNode(o, names) { let r = null; o.traverse(m => { if (!r && names.includes(m.name)) r = m; }); return r; }
 function arm(o, side, name) { if (!name || !G[name]) return; const b = findNode(o, SLOT[side]); if (!b) return; const w = G[name].scene.clone(true); w.traverse(m => { if (m.isMesh) { m.castShadow = false; m.frustumCulled = false; } }); b.add(w); }
-const ACTS = { idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', atk: 'Use_Item', shoot: 'Throw', hit: 'Hit_A', die: 'Death_A', rise: 'Spawn_Ground' };
-const ONCE = ['atk', 'shoot', 'hit', 'die', 'rise'];
+const ACTS = { cheer: 'Jump_Full_Short', idle: 'Idle_A', walk: 'Walking_A', run: 'Running_A', atk: 'Use_Item', shoot: 'Throw', hit: 'Hit_A', die: 'Death_A', rise: 'Spawn_Ground' };
+const ONCE = ['atk', 'shoot', 'hit', 'die', 'rise', 'cheer'];
 function mkChar(model, scale, wr, wl) {
   clipsReady();
   const o = SkeletonUtils.clone(G[model].scene); o.scale.setScalar(scale);
@@ -796,25 +815,31 @@ function mkUnit(side, kind, x, z) {
   const u = Object.assign(c, { side, kind, D, hp, max: hp, dmg, rate: D.rate, range: D.range, speed: D.speed, ranged: D.ranged,
     rad: scale / .3 * .3, cd: Math.random() * .5, busy: 0, pend: null, target: null, rt: 0, dead: false, on: false, deadT: 0,
     bar: mkBar(hero ? 'hero' : side, hero ? .9 : kind === 'boss' ? 1.4 : .6), barY: (kind === 'boss' ? 1.55 : hero ? 1.15 : .95) });
+  u.bs = c.o.scale.x; if (side === 'ally' && !D.beast) addFace(u);
   B.units.push(u); return u;
 }
 function activate(u, rise) {
-  u.on = true; u.o.visible = true;
+  u.on = true; u.o.visible = true; if (u.face) setFace(u, 'angry');
+  if (u.side === 'enemy' && B.walls) u.wside = ['s', 'e', 'w'].find(k => outsideOf(k, u.o.position.x, u.o.position.z)) || null;
+  if (u.kind === 'boss') { toast('O Rei Draugr chegou!'); setTimeout(() => bcut(() => [u.o.position.x, .4, u.o.position.z], 2.2, 'O Rei Draugr!', 0), 1500); }
   if (rise) { anim(u, 'rise'); u.busy = 1.3; burstAt(u.o.position.x, .2, u.o.position.z, '#6b5a44', 12, .03); }
 }
 function hurt(t, d) {
   if (!alive(t) || !B || B.over) return;
+  if (t.isW) { wallHurt(t.side, d); return; }
   if (t.isB) {
     t.hp -= d * .6; B.bhp[t.id] = t.hp;
     if (t.hp <= 0) { Snd.crash(); burstAt(t.x, 1, t.z, '#5b4a3a', 26, .07); if (t.id === 'salao') endBattle(false); }
     return;
   }
   t.hp -= d; burstAt(t.o.position.x, .5, t.o.position.z, t.side === 'enemy' ? '#d8d2c0' : '#b02a1e', 4, .025); Snd.hit();
+  dmgNum(t.o.position.x, t.barY + .15, t.o.position.z, d, t.side === 'enemy' ? '#fff1c2' : '#ff6a5a', d >= 60); t.sq = .14;
   if (t.hp <= 0) { die(t); return; }
+  if (t.face) faceFor(t, 'hurt', .45);
   if (!t.busy && t.kind !== 'boss' && t.kind !== 'hero' && Math.random() < .25) { anim(t, 'hit', .4); t.busy = .35; }
 }
 function die(u) {
-  u.dead = true; u.pend = null; anim(u, 'die'); u.bar.bg.visible = u.bar.fg.visible = false; Snd.die();
+  u.dead = true; u.pend = null; anim(u, 'die'); if (u.face) setFace(u, 'hurt'); u.bar.bg.visible = u.bar.fg.visible = false; Snd.die();
   if (u.side === 'enemy') B.killed++;
   if (u.kind === 'hero') { B.heroDown = 8; toast('O Jarl caiu! Ele volta em 8 segundos'); }
 }
@@ -832,6 +857,17 @@ function startBattle() {
     const t = { isB: true, id: p.id, p, x, z, rad: p.type === 'salao' ? 1.3 : .85, hp: max, max, bar: mkBar('bld', p.type === 'salao' ? 1.6 : 1), cd: 1 };
     B.blds.push(t); B.bhp[p.id] = max;
   });
+  // muralha e quem atira de cima
+  const WL = S.b.muralha.lvl;
+  B.walls = WL ? Object.fromEntries(['s', 'e', 'w'].map(k => [k, { hp: wallHp(WL), max: wallHp(WL), bar: mkBar('bld', 1.6) }])) : null;
+  B.shooters = [];
+  B.blds.forEach(t => { if (t.p.type === 'torre') B.shooters.push({ bld: t, x: t.x, y: 2.7, z: t.z, range: 7.5, rate: 1.2, dmg: towerDmg(S.b[t.id].lvl), cd: 1 }); });
+  const SL = S.b.salao.lvl, sal = B.blds.find(t => t.id === 'salao');
+  if (SL >= 7) sal.hp = sal.max = Math.round(sal.max * 1.3), B.bhp.salao = sal.hp;
+  if (SL >= 4) [-.85, .85].concat(SL >= 7 ? [-.95, .95] : []).forEach((dx, i) => B.shooters.push({ bld: sal, x: sal.x + dx, y: 3, z: sal.z + (i > 1 ? -.7 : .6), range: 7.5, rate: 1.1, dmg: towerDmg(SL - 3), cd: .5 + i * .3 }));
+  if (WL >= 7) ['e', 'w'].forEach(k => { const [x, z] = wallPt(k, WALL[k].to); B.shooters.push({ x, y: 2.2, z, range: 8, rate: 1, dmg: towerDmg(WL - 4), cd: 1 }); });
+  // olhos dos draugr brilham
+  ['Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage'].forEach(n => G[n].scene.traverse(m => { if (m.isMesh && /Eyes/.test(m.name)) { m.material.emissive = new THREE.Color('#ff3a1a'); m.material.emissiveIntensity = 1.4; } }));
   // herói
   const [hx, hz] = hexPos(7, 5);
   B.hero = mkUnit('ally', 'hero', hx, hz + 1.6); activate(B.hero);
@@ -856,7 +892,7 @@ function startBattle() {
   document.body.classList.add('battle'); $('#bhud').hidden = false; $('#bWave').textContent = 'Onda ' + w + (w % 10 === 0 ? ' · Chefe' : '');
   $('#bHint').hidden = false; setTimeout(() => { const h = $('#bHint'); if (h) h.hidden = true; }, 6000);
   folk.forEach(f => f.o.visible = false); guards.forEach(g => g.o.visible = false);
-  cam.x = 0; cam.z = 3.5; placeCamera();
+  B.follow = true; B.slow = 1; B.oldD = cam.d; cam.d = Math.min(cam.d, 20); cam.x = hx; cam.z = hz + 2.6; placeCamera(); $('#btnCam').classList.add('on');
   Snd.horn();
 }
 
@@ -881,11 +917,12 @@ function moveToward(u, tx, tz, dt, stopAt) {
   return false;
 }
 function strike(u, t) {
-  u.cd = u.rate; u.busy = .5; u.pend = { t: .28, target: t };
+  u.cd = u.rate; u.busy = .5; u.pend = { t: .28, target: t }; if (u.face) faceFor(u, 'shout', .55);
   anim(u, u.ranged ? 'shoot' : 'atk', .55);
 }
 function stepUnit(u, dt) {
-  u.mixer.update(dt);
+  u.mixer.update(dt); stepFace(u, dt);
+  if (u.sq > 0) { u.sq -= dt; const k = 1 + Math.max(0, u.sq) * 1.1; u.o.scale.set(u.bs * k, u.bs / k, u.bs * k); } else if (u.sq !== undefined) { u.o.scale.setScalar(u.bs); u.sq = undefined; }
   if (u.dead) {
     u.deadT += dt; if (u.deadT > 2) u.o.position.y -= dt * .5;
     if (u.deadT > 3.2 && u.o.parent) { scene.remove(u.o); }
@@ -911,7 +948,8 @@ function stepUnit(u, dt) {
     return;
   }
   if ((u.rt -= dt) <= 0 || !alive(u.target)) { u.target = chooseTarget(u); u.rt = .4 + Math.random() * .2; }
-  const t = u.target;
+  let t = u.target;
+  if (u.side === 'enemy' && t && !t.isW) { const w = wallTarget(u); if (w && !(t.side === 'ally' && outsideOf(u.wside, ...posOf(t)))) t = w; }
   if (!t) {
     if (u.side === 'ally' && u.kind !== 'hero') { // espera em frente ao Salão
       const i = B.units.indexOf(u); if (moveToward(u, 1.5 + (i % 5) * .6 - 1.2, 3.2 + Math.floor(i / 5) % 3 * .6, dt, .2)) anim(u, 'idle');
@@ -927,23 +965,31 @@ function separate() {
     const a = L[i].o.position, b = L[j].o.position, dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), m = (L[i].rad + L[j].rad) * 1.25;
     if (d > 0 && d < m) { const push = (m - d) / 2, nx = dx / d * push, nz = dz / d * push; a.x -= nx; a.z -= nz; b.x += nx; b.z += nz; }
   }
-  L.forEach(u => { const p = u.o.position; if (u.on && u.kind !== 'boss') { p.x = Math.max(-17, Math.min(17.5, p.x)); p.z = Math.max(-9.5, Math.min(11.5, p.z)); } });
+  L.forEach(u => { const p = u.o.position; if (u.on && u.kind !== 'boss') { p.x = Math.max(-17, Math.min(17.5, p.x)); p.z = Math.max(-9.5, Math.min(11.5, p.z)); }
+    const k = u.wside; if (k && B.walls && B.walls[k].hp > 0) { if (k === 's') p.z = Math.max(p.z, WALL.s.v + .45); else if (k === 'e') p.x = Math.max(p.x, WALL.e.v + .45); else p.x = Math.min(p.x, WALL.w.v - .45); } });
 }
 function stepBattle(dt) {
   if (!B) return;
-  B.t += dt;
   camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+  if (B.ending) { stepEnding(dt); return; }
+  if (B.pendEnd && (B.pendEnd.t -= dt) <= 0) { const e = B.pendEnd; B.pendEnd = null; startEnding(e.win, e.html); return; }
+  B.cutCd = Math.max(0, (B.cutCd || 0) - dt);
+  if (B.cut) stepCut(dt); else followHero(dt);
+  dt *= B.slow || 1;
+  B.t += dt;
+  stepDmg(dt);
   // drakkar inimigo chega à praia
   if (B.ship) { const k = Math.min(1, B.t / 5); B.ship.position.z = 34 - (34 - 12.6) * (1 - Math.pow(1 - k, 2)); B.ship.position.y = -.15 + Math.sin(B.t * 1.4) * .05; B.ship.rotation.z = Math.sin(B.t) * .03; }
   B.queue = B.queue.filter(u => { if (B.t >= u.spawnAt) { activate(u, u.rise); return false; } return true; });
   B.units.forEach(u => stepUnit(u, dt));
   separate();
-  // torres atiram
-  B.blds.forEach(t => {
-    if (t.p.type !== 'torre' || t.hp <= 0) return; t.cd -= dt; if (t.cd > 0) return;
-    let best = null, bd = 7.5; B.units.forEach(u => { if (u.side === 'enemy' && alive(u)) { const d = Math.hypot(u.o.position.x - t.x, u.o.position.z - t.z); if (d < bd) { bd = d; best = u; } } });
-    if (best) { t.cd = 1.2; shoot('arrow', t.x, 2.7, t.z, best, towerDmg(S.b[t.id].lvl), 'ally'); }
+  // torres, castelo e torres da muralha atiram
+  B.shooters.forEach(t => {
+    if (t.bld && t.bld.hp <= 0) return; t.cd -= dt; if (t.cd > 0) return;
+    let best = null, bd = t.range; B.units.forEach(u => { if (u.side === 'enemy' && alive(u)) { const d = Math.hypot(u.o.position.x - t.x, u.o.position.z - t.z); if (d < bd) { bd = d; best = u; } } });
+    if (best) { t.cd = t.rate; shoot('arrow', t.x, t.y, t.z, best, t.dmg, 'ally'); }
   });
+  if (B.walls) Object.entries(B.walls).forEach(([k, w]) => { const [x, z] = wallPt(k, WALL[k].gate); placeBar(w.bar, x, 1.9, z, Math.max(0, w.hp) / w.max, w.hp > 0 && w.hp < w.max); });
   // projéteis
   for (let i = B.proj.length - 1; i >= 0; i--) {
     const pr = B.proj[i]; pr.t += dt / pr.dur;
@@ -986,7 +1032,8 @@ function heroSkill() {
   if (!best) { toast('Nenhum draugr ao alcance do machado'); Snd.no(); return; }
   B.skillCd = 8; B.cmd = null; h.pend = null; h.busy = .55; const [tx, tz] = posOf(best); h.o.rotation.y = Math.atan2(tx - h.o.position.x, tz - h.o.position.z);
   anim(h, 'shoot', .55);
-  setTimeout(() => { if (B && !h.dead) shoot('axe', h.o.position.x, 1, h.o.position.z, best, h.dmg * 4, 'ally', 1.9); }, 300);
+  faceFor(h, 'shout', 1);
+  setTimeout(() => { if (B && !h.dead) { shoot('axe', h.o.position.x, 1, h.o.position.z, best, h.dmg * 4, 'ally', 1.9); bcut(() => best.o ? [best.o.position.x, .4, best.o.position.z] : [tx, .4, tz], 1.3, '', h.o.rotation.y + Math.PI * .75); } }, 300);
 }
 function moveHero(sx, sy) {
   if (!B || B.over || B.hero.dead) return;
@@ -1011,17 +1058,15 @@ function endBattle(win) {
   save(); dirty = true;
   const lostN = lost.war + lost.arc + lost.hus;
   const lostTxt = lostN ? Object.entries(lost).filter(([, n]) => n).map(([k, n]) => `${n} ${(n > 1 ? TROOPS[k].pl : TROOPS[k].name).toLowerCase()}`).join(', ') : 'nenhuma tropa';
-  setTimeout(() => {
-    cleanupBattle();
-    openSheet(win
+  B.pendEnd = { win, t: .7, html: (win
       ? `<h2>Vitória!</h2><p class="sub">Onda ${w} derrotada${w === MAXWAVE ? ' · o fiorde está salvo!' : ''}</p>
          <p class="desc">Os draugr voltaram para o mar. Perdas: ${lostTxt}.</p>
          <div class="costs">${Object.entries(rew).map(([k, v]) => `<div class="cost">${icoSVG(k)}+${fmt(v)}</div>`).join('')}</div>
          <div class="actions"><button class="btn" data-a="home">Voltar à vila</button></div>`
       : `<h2>O Salão caiu…</h2><p class="sub">Onda ${w}</p>
          <p class="desc">A vila se reergue, mas a onda continua lá fora. Perdas: ${lostTxt}. Treine mais tropas, melhore o Ferreiro e as Torres e tente de novo.</p>
-         <div class="actions"><button class="btn" data-a="home">Voltar à vila</button></div>`);
-  }, 1300);
+         <div class="actions"><button class="btn" data-a="home">Voltar à vila</button></div>`) };
+  B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; });
 }
 function fleeBattle() { if (!B || B.over) return; B.over = true; const w = B.wave;
   const lost = { war: 0, arc: 0, hus: 0 }; B.units.forEach(u => { if (u.side === 'ally' && TROOPS[u.kind] && u.dead) lost[u.kind]++; });
@@ -1029,12 +1074,14 @@ function fleeBattle() { if (!B || B.over) return; B.over = true; const w = B.wav
   cleanupBattle(); toast(`Você recuou da Onda ${w}`); }
 function cleanupBattle() {
   if (!B) return;
-  B.units.forEach(u => { scene.remove(u.o); dropBar(u.bar); });
+  B.units.forEach(u => { scene.remove(u.o); dropBar(u.bar); }); clearDmg();
+  if (B.walls) Object.values(B.walls).forEach(w => dropBar(w.bar));
+  if (B.oldD) cam.d = B.oldD; document.body.classList.remove('cine'); $('#cine').hidden = true;
   B.blds.forEach(t => dropBar(t.bar)); B.proj.forEach(p => scene.remove(p.m));
   if (B.ship) scene.remove(B.ship); if (B.mark) scene.remove(B.mark);
   B = null;
   document.body.classList.remove('battle'); $('#bhud').hidden = true;
-  folk.forEach(f => f.o.visible = true); herdObjs.forEach(a => a.o.visible = true); refreshGuards(); dirty = true;
+  folk.forEach(f => f.o.visible = true); herdObjs.forEach(a => a.o.visible = true); refreshGuards(); dirty = true; placeCamera();
 }
 function openWave() {
   if (B) return; const w = S.wave;
@@ -1457,11 +1504,182 @@ function cineCurral(rew) {
     card: rewardCard('Curral recolhido!', 'Leite e ovos foram para a despensa', rew) });
 }
 
+/* ---------- rostos com expressão (sobrancelhas, boca e lágrimas presas à cabeça) ---------- */
+let FM = null;
+function faceMats() {
+  if (FM) return FM;
+  FM = { brow: new THREE.MeshBasicMaterial({ color: '#2a1a10' }), mouth: new THREE.MeshBasicMaterial({ color: '#3a0f0c' }), tongue: new THREE.MeshBasicMaterial({ color: '#c8504a' }),
+    teeth: new THREE.MeshBasicMaterial({ color: '#f4efe6' }), tear: new THREE.MeshBasicMaterial({ color: '#8fd3ff' }),
+    browG: new THREE.BoxGeometry(.2, .05, .03), openG: new THREE.CircleGeometry(.085, 16), tongueG: new THREE.CircleGeometry(.045, 12),
+    arcG: new THREE.TorusGeometry(.09, .022, 6, 16, Math.PI), grimG: new THREE.BoxGeometry(.22, .06, .02), teethG: new THREE.BoxGeometry(.2, .022, .022), tearG: new THREE.SphereGeometry(.035, 8, 6) };
+  return FM;
+}
+function addFace(c) {
+  const head = findNode(c.o, ['head']); if (!head) return;
+  const M = faceMats(); c.o.updateMatrixWorld(true);
+  const f = new THREE.Group(); new THREE.Matrix4().copy(head.matrixWorld).invert().multiply(c.o.matrixWorld).decompose(f.position, f.quaternion, f.scale);
+  head.add(f); const z = .53;
+  const bl = new THREE.Mesh(M.browG, M.brow), br = new THREE.Mesh(M.browG, M.brow); bl.position.set(-.17, 1.7, z + .05); br.position.set(.17, 1.7, z + .05);
+  const open = new THREE.Group(); const om = new THREE.Mesh(M.openG, M.mouth); om.scale.y = 1.25; open.add(om); const tg = new THREE.Mesh(M.tongueG, M.tongue); tg.position.set(0, -.03, .002); open.add(tg); open.position.set(0, 1.42, z + .005);
+  const smile = new THREE.Mesh(M.arcG, M.mouth); smile.rotation.z = Math.PI; smile.position.set(0, 1.47, z);
+  const frown = new THREE.Mesh(M.arcG, M.mouth); frown.position.set(0, 1.38, z);
+  const grim = new THREE.Group(); grim.add(new THREE.Mesh(M.grimG, M.mouth)); const th = new THREE.Mesh(M.teethG, M.teeth); th.position.z = .004; grim.add(th); grim.position.set(0, 1.43, z);
+  const tears = [-.17, .17].map(x => { const t = new THREE.Mesh(M.tearG, M.tear); t.scale.y = 1.4; t.position.set(x, 1.55, z); return t; });
+  f.add(bl, br, open, smile, frown, grim, ...tears);
+  c.face = { f, bl, br, open, smile, frown, grim, tears, cur: '', t: 0 }; c.head = head;
+  setFace(c, 'calm');
+}
+const FACES = { // [altura das sobrancelhas, inclinação (+ = bravo), boca]
+  calm: [1.71, 0, null], angry: [1.69, .45, null], shout: [1.68, .5, 'open'], hurt: [1.7, -.5, 'grim'],
+  happy: [1.74, -.12, 'smile'], cheer: [1.74, -.12, 'open'], sad: [1.72, -.42, 'frown'], scared: [1.72, -.4, 'open']
+};
+function setFace(c, e) {
+  const F = c.face; if (!F || F.cur === e) return; F.cur = e;
+  const [y, tilt, m] = FACES[e];
+  F.bl.position.y = F.br.position.y = y; F.bl.rotation.z = -tilt; F.br.rotation.z = tilt;
+  ['open', 'smile', 'frown', 'grim'].forEach(k => F[k].visible = m === k);
+  F.open.scale.setScalar(e === 'scared' ? .6 : 1);
+  F.tears.forEach(t => t.visible = e === 'sad');
+}
+function faceFor(u, e, dur) { if (!u.face) return; setFace(u, e); u.faceT = dur || 0; }
+function stepFace(u, dt) {
+  if (!u.face) return;
+  if (u.face.cur === 'sad') u.face.tears.forEach((t, i) => { t.position.y = 1.55 - ((u.face.t + i * .3) % .6) * .5; });
+  u.face.t += dt;
+  if (u.faceT > 0 && (u.faceT -= dt) <= 0) setFace(u, u.hp < u.max * .3 ? 'scared' : 'angry');
+}
+
+/* ---------- números de dano ---------- */
+const dmgs = [];
+function dmgNum(x, y, z, v, col, big) {
+  if (dmgs.length > 40) return;
+  const el = document.createElement('div'); el.className = 'dmg' + (big ? ' big' : ''); el.textContent = Math.round(v); el.style.color = col;
+  $('#tags').appendChild(el); dmgs.push({ el, x: x + (Math.random() - .5) * .3, y, z, t: 0 });
+}
+function stepDmg(dt) {
+  for (let i = dmgs.length - 1; i >= 0; i--) {
+    const d = dmgs[i]; d.t += dt; v3.set(d.x, d.y + d.t * .9, d.z).project(camera);
+    d.el.style.transform = `translate(${(v3.x + 1) / 2 * innerWidth}px,${(1 - v3.y) / 2 * innerHeight}px) translate(-50%,-50%) scale(${1 + Math.max(0, .25 - d.t) * 2})`;
+    d.el.style.opacity = Math.min(1, (1 - d.t) * 2.5);
+    if (d.t > 1) { d.el.remove(); dmgs.splice(i, 1); }
+  }
+}
+function clearDmg() { dmgs.splice(0).forEach(d => d.el.remove()); }
+
+/* ---------- muralha em volta da vila ---------- */
+const WALL = { s: { a: 'z', v: 7.65, from: -14.3, to: 13.6, gate: -1 }, e: { a: 'x', v: 13.6, from: -6.8, to: 7.65, gate: .5 }, w: { a: 'x', v: -14.3, from: -6.8, to: 7.65, gate: 1.5 } };
+const wallHp = L => Math.round(700 * Math.pow(1.45, L - 1));
+const outsideOf = (k, x, z) => k === 's' ? z > WALL.s.v : k === 'e' ? x > WALL.e.v : x < WALL.w.v;
+const wallPt = (k, v) => WALL[k].a === 'z' ? [v, WALL[k].v] : [WALL[k].v, v];
+const wallGroup = new THREE.Group(); let wallSig = '';
+const logGeo = new THREE.CylinderGeometry(.11, .12, 1, 7), tipGeo = new THREE.ConeGeometry(.11, .24, 7);
+function rebuildWalls() {
+  const L = S.b.muralha.lvl, broken = B && B.walls ? Object.keys(B.walls).filter(k => B.walls[k].hp <= 0).join('') : '';
+  const sig = L + ':' + broken; if (sig === wallSig || !G.wall_straight) return; wallSig = sig;
+  wallGroup.clear(); if (!wallGroup.parent) scene.add(wallGroup); if (!L) return;
+  const stone = L >= 4, wood = mat('#7a5230'), tipM = mat('#5c3d22');
+  const logs = [], tips = [];
+  Object.entries(WALL).forEach(([k, W]) => {
+    const down = broken.includes(k), hs = down ? .32 : 1, rot = W.a === 'z' ? 0 : Math.PI / 2;
+    if (stone) {
+      for (let v = W.from + 1; v <= W.to - .2; v += 2) {
+        const [x, z] = wallPt(k, v), gate = Math.abs(v - W.gate) < 1;
+        const o = model(gate && !down ? 'wall_straight_gate' : 'wall_straight'); o.position.set(x, 0, z); o.rotation.y = rot; o.scale.y = hs; wallGroup.add(o);
+      }
+      if (L >= 7 && k !== 's') { const [x, z] = wallPt(k, W.to); const t = model('building_tower_A_red', .7); t.position.set(x, 0, z); wallGroup.add(t); const fl = model('flag_red', 1.6); fl.position.set(x, 1.95, z); wallGroup.add(fl); }
+    } else {
+      for (let v = W.from; v <= W.to; v += .27) {
+        const [x, z] = wallPt(k, v), gap = Math.abs(v - W.gate) < .8;
+        if (gap) continue; const h = (.95 + (Math.floor(v * 7) % 3) * .06) * hs;
+        logs.push([x, h / 2, z, h]); tips.push([x, h + .1, z]);
+      }
+      const [gx, gz] = wallPt(k, W.gate);
+      if (!down) { // portão de madeira
+        const gt = new THREE.Group(); gt.position.set(gx, 0, gz); gt.rotation.y = rot;
+        [-.82, .82].forEach(dx => { const p = mesh(new THREE.CylinderGeometry(.14, .15, 1.4, 7), '#5c3d22', dx, .7, 0); gt.add(p); });
+        gt.add(mesh(new THREE.BoxGeometry(1.5, .9, .1), '#8a6038', 0, .5, 0));
+        [.25, .75].forEach(y => gt.add(mesh(new THREE.BoxGeometry(1.55, .08, .14), '#4a2f18', 0, y, 0)));
+        gt.add(mesh(new THREE.BoxGeometry(1.9, .14, .18), '#4a2f18', 0, 1.3, 0));
+        wallGroup.add(gt);
+      }
+    }
+  });
+  if (logs.length) {
+    const im = new THREE.InstancedMesh(logGeo, wood, logs.length), it = new THREE.InstancedMesh(tipGeo, tipM, tips.length), mt = new THREE.Matrix4();
+    logs.forEach(([x, y, z, h], i) => { mt.makeScale(1, h, 1).setPosition(x, y, z); im.setMatrixAt(i, mt); });
+    tips.forEach(([x, y, z], i) => { mt.makeTranslation(x, y, z); it.setMatrixAt(i, mt); });
+    im.castShadow = it.castShadow = true; im.receiveShadow = true; wallGroup.add(im, it);
+  }
+}
+function wallTarget(u) { // o draugr do lado de fora de um muro de pé ataca o muro
+  const k = u.wside; if (!k || !B.walls || B.walls[k].hp <= 0) return null;
+  const p = u.o.position, W = WALL[k], v = Math.max(W.from + .5, Math.min(W.to - .5, W.a === 'z' ? p.x : p.z)), [x, z] = wallPt(k, v);
+  if (!u.wt) u.wt = { isB: true, isW: true, side: k, rad: .45, get hp() { return B && B.walls ? B.walls[this.side].hp : 0; } };
+  u.wt.x = x; u.wt.z = z; return u.wt;
+}
+function wallHurt(k, d) {
+  const w = B.walls[k]; if (w.hp <= 0) return; w.hp -= d;
+  const [x, z] = wallPt(k, WALL[k].gate); if (Math.random() < .3) burstAt(x + (Math.random() - .5) * 2, .8, z, S.b.muralha.lvl >= 4 ? '#9aa3a8' : '#8a6038', 4, .03);
+  if (w.hp <= 0) { Snd.crash(); toast(k === 's' ? 'A muralha da praia caiu!' : k === 'e' ? 'A muralha leste caiu!' : 'A muralha oeste caiu!'); bcut([x, .6, z], 1.6, 'A muralha caiu!'); }
+}
+
+/* ---------- câmera de ação: segue o Jarl e faz closes em câmera lenta ---------- */
+const _bc = new THREE.Vector3();
+function bcut(at, dur, cap, ang) {
+  if (!B || B.over || B.cut || B.cutCd > 0) return;
+  B.cut = { at, dur, t: 0, ang: ang ?? Math.random() * .8 - .4, d: 3.2 }; B.cutCd = 7; B.slow = .35;
+  document.body.classList.add('cine'); $('#cine').hidden = false; $('#cineSkip').hidden = true; $('#cineCap').textContent = cap || ''; $('#cineCap').classList.toggle('show', !!cap);
+}
+function stepCut(dt) {
+  const c = B.cut; c.t += dt;
+  const at = typeof c.at === 'function' ? c.at() : c.at, a = c.ang + c.t * .5, d = c.d - c.t * .4;
+  _bc.set(at[0] + Math.sin(a) * d, at[1] + 1.1, at[2] + Math.cos(a) * d); camera.position.copy(_bc); camera.lookAt(at[0], at[1] + .3, at[2]);
+  if (c.t >= c.dur) { B.cut = null; B.slow = 1; document.body.classList.remove('cine'); $('#cine').hidden = true; $('#cineSkip').hidden = false; placeCamera(); }
+}
+function followHero(dt) {
+  if (!B.follow || B.cut) return;
+  const h = B.hero, [x, z] = h.dead ? hexPos(7, 5) : [h.o.position.x, h.o.position.z], k = Math.min(1, dt * 2.2);
+  cam.x += (x - cam.x) * k; cam.z += (z + 1 - cam.z) * k; placeCamera();
+}
+function toggleFollow() { if (!B) return; B.follow = !B.follow; $('#btnCam').classList.toggle('on', B.follow); Snd.tap(); }
+
+/* ---------- final da batalha em cena ---------- */
+function startEnding(win, html) {
+  B.ending = { win, t: 0, html }; B.cut = null; B.slow = 1;
+  B.units.forEach(u => { u.bar.bg.visible = u.bar.fg.visible = false; }); B.blds.forEach(t => { t.bar.bg.visible = t.bar.fg.visible = false; }); if (B.walls) Object.values(B.walls).forEach(w => { w.bar.bg.visible = w.bar.fg.visible = false; });
+  document.body.classList.add('cine'); $('#cine').hidden = false; $('#cineSkip').hidden = false;
+  $('#cineCap').textContent = win ? 'VITÓRIA!' : 'O Salão caiu…'; $('#cineCap').classList.remove('show'); setTimeout(() => $('#cineCap').classList.add('show'), 300);
+  B.units.forEach(u => {
+    if (u.dead || !u.on) return;
+    u.pend = null; u.busy = 0;
+    if (u.side === 'ally') { if (win) { faceFor(u, 'cheer'); u.cheer = Math.random() * .6; } else { faceFor(u, 'sad'); anim(u, 'idle'); } }
+    else if (win) anim(u, 'idle'); else anim(u, 'idle');
+  });
+  const h = B.hero; B.ending.at = !h.dead ? [h.o.position.x, 0, h.o.position.z] : (() => { const [x, z] = hexPos(7, 5); return [x, 0, z + 1.4]; })();
+}
+function stepEnding(dt) {
+  const E = B.ending; E.t += dt;
+  B.units.forEach(u => {
+    u.mixer.update(dt); stepFace(u, dt);
+    if (u.dead || !u.on || u.side !== 'ally') return;
+    if (E.win) { if (u.act.cheer && (u.cheer -= dt) <= 0) { u.cheer = 1.1 + Math.random() * .4; anim(u, 'cheer', .9); setFace(u, Math.random() < .5 ? 'cheer' : 'happy'); } }
+    else if (u.head) u.head.rotation.x += .5; // cabisbaixo
+  });
+  stepDmg(dt);
+  const [x, , z] = E.at, a = E.win ? E.t * .45 : .3, d = E.win ? 3 : 2.6 + E.t * .5, y = E.win ? 1.4 : 1.2 + E.t * .25;
+  camera.position.set(x + Math.sin(a) * d, y, z + Math.cos(a) * d); camera.lookAt(x, .6, z);
+  if (E.t > 4.2) finishEnding();
+}
+function finishEnding() {
+  if (!B || !B.ending) return; const html = B.ending.html;
+  document.body.classList.remove('cine'); $('#cine').hidden = true; cleanupBattle(); placeCamera(); openSheet(html);
+}
+
 /* ---------- laço de render ---------- */
 let lastT = performance.now();
 function frame(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
-  PLOTS.forEach(refreshPlot);
+  PLOTS.forEach(refreshPlot); rebuildWalls();
   const ds = dt / 1000, wall = Date.now();
   refreshFields(wall); refreshCrews(wall); regrow(ds);
   if (CINE) stepCine(ds); else { stepHerd(ds); stepCrews(ds, wall); }
@@ -1489,7 +1707,7 @@ function openBuilding(p) {
 function renderSheet() {
   const p = plotById(sheetFor); if (!p) return;
   const b = S.b[p.id], d = DEF[p.type], L = b.lvl;
-  let html = `<h2>${d.name}</h2><p class="sub">${L ? 'Nível ' + L : 'Terreno livre'}</p><p class="desc">${d.desc}</p>`;
+  let html = `<h2>${p.type === 'salao' && L >= 7 ? 'Castelo Viking' : d.name}</h2><p class="sub">${L ? 'Nível ' + L : 'Terreno livre'}</p><p class="desc">${d.desc}</p>`;
   if (p.type === 'torre' && L) html += `<div class="stat"><span>Dano da flecha</span><span>${towerDmg(L)}${L < MAXLV ? ` <span class="up">→ ${towerDmg(L + 1)}</span>` : ''}</span></div>`;
   if (p.type === 'ferreiro' && L) html += `<div class="stat"><span>Bônus das tropas</span><span>+${L * 10}%${L < MAXLV ? ` <span class="up">→ +${(L + 1) * 10}%</span>` : ''}</span></div>`;
   if (p.type === 'quartel' && L) html += trainHTML();
@@ -1864,7 +2082,8 @@ sheet.addEventListener('click', e => {
   }
 });
 $('#btnGems').addEventListener('click', () => { Snd.init(); Snd.tap(); openTreasure(); });
-$('#cineSkip').addEventListener('click', skipCine);
+$('#cineSkip').addEventListener('click', () => { if (B && B.ending) finishEnding(); else skipCine(); });
+$('#btnCam').addEventListener('click', toggleFollow);
 
 /* etiquetas dos canteiros */
 const ftags = [];
@@ -1934,4 +2153,4 @@ loadAll().then(() => {
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-window.__vs = { finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B && !B.over) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
