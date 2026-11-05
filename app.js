@@ -25,14 +25,17 @@ const ICO = {
   frutas: '<circle cx="12" cy="14" r="7" fill="#d8423a" stroke="#6b1a12" stroke-width="1.4"/><path d="M12 7q1-4 4-4M12 7q-3-2-5 0q2 2 5 0" stroke="#4f7a24" stroke-width="1.6" fill="#7fb34a"/>',
   legumes: '<path d="M6 18L17 6q3 1 2 4L8 20q-3 0-2-2z" fill="#ef8a2b" stroke="#7a3a0a" stroke-width="1.4"/><path d="M17 6l2-3M18 7l3-1M16 5l0-3" stroke="#4f9a2e" stroke-width="1.8" stroke-linecap="round"/>',
   verduras: '<path d="M12 20c-6 0-8-5-7-9 2 2 4 2 5 0-2-3-1-6 2-8 3 2 4 5 2 8 1 2 3 2 5 0 1 4-1 9-7 9z" fill="#7fc04f" stroke="#2f5a16" stroke-width="1.4"/><path d="M12 20V9" stroke="#2f5a16" stroke-width="1.2"/>',
+  carne: '<path d="M14 4c4 0 6 3 5 6s-4 5-7 5l-3 3a2 2 0 1 1-3-1l-1-1a2 2 0 1 1 1-3l3-3c0-3 2-6 5-6z" fill="#b5503a" stroke="#4a1a10" stroke-width="1.4"/><path d="M8 16l-2 2" stroke="#f4efe6" stroke-width="2.4" stroke-linecap="round"/><path d="M13 7q3 0 4 3" stroke="#e08a6e" stroke-width="1.3" fill="none"/>',
+  couro: '<path d="M5 5q3 2 7 0q4 2 7 0q-1 3 0 6q-2 2 0 5q-3 0-4 3q-3-2-6 0q-1-3-4-3q2-3 0-5q1-3 0-6z" fill="#a8743f" stroke="#4a2c0f" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 9q4 3 8 0M8 14q4 3 8 0" stroke="#d6a26a" stroke-width="1.1" fill="none"/>',
+  trofeu: '<path d="M12 20v-6M9 14h6" stroke="#6b4527" stroke-width="2.2" stroke-linecap="round"/><path d="M12 14c-3 0-5-2-6-6M6 8L4 4M6 8l3-3M12 14c3 0 5-2 6-6M18 8l2-4M18 8l-3-3" stroke="#e8d6a8" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="12" cy="13" r="2.2" fill="#8a5a2c"/>',
   hammer: '<path d="M5 19l8-8" stroke="#b07a3a" stroke-width="3" stroke-linecap="round"/><path d="M11 5l6 6 2-2-6-6z" fill="#aeb7bc" stroke="#2c343a" stroke-width="1.3"/>'
 };
 document.querySelectorAll('svg[data-ico]').forEach(s => s.innerHTML = ICO[s.dataset.ico]);
 const icoSVG = k => `<svg viewBox="0 0 24 24">${ICO[k]}</svg>`;
 const RES = ['food', 'wood', 'stone', 'iron'];
 const RES_NAME = { food: 'Comida', wood: 'Madeira', stone: 'Pedra', iron: 'Ferro', ouro: 'Ouro', rubi: 'Rubi', diamante: 'Diamante',
-  leite: 'Leite', ovos: 'Ovos', frutas: 'Frutas', legumes: 'Legumes', verduras: 'Verduras', runes: 'Runas', meal: 'Refeições' };
-const GEMS = ['ouro', 'rubi', 'diamante'], PANTRY = ['leite', 'ovos', 'frutas', 'legumes', 'verduras'];
+  leite: 'Leite', ovos: 'Ovos', carne: 'Carne', couro: 'Couro', trofeu: 'Troféu de alce', frutas: 'Frutas', legumes: 'Legumes', verduras: 'Verduras', runes: 'Runas', meal: 'Refeições' };
+const GEMS = ['ouro', 'rubi', 'diamante'], PANTRY = ['leite', 'ovos', 'frutas', 'legumes', 'verduras', 'carne'], TREAS = [...GEMS, 'couro', 'trofeu'];
 
 /* ========== Definições ========== */
 const MAXLV = 10;
@@ -53,6 +56,8 @@ const DEF = {
              desc: 'Treina guerreiros, arqueiros e huscarls. Cada nível aumenta o tamanho do exército e libera novas tropas.' },
   muralha: { name: 'Muralha', size: 0, time: 25, cost: { wood: 300, stone: 220 }, unlock: 3,
              desc: 'Cerca a vila pela praia e pelas florestas. Os draugr precisam derrubá-la antes de entrar. Até o nível 3 é uma paliçada de troncos; no 4 vira muralha de pedra; no 7 ganha torres de arqueiros.' },
+  cabana:  { name: 'Cabana de Caça', size: 2, time: 14, cost: { wood: 180, food: 80 }, unlock: 3,
+             desc: 'Os caçadores saem pelo portão leste até a clareira da floresta. Trazem carne para a despensa e couro para as armaduras do Ferreiro. Cuidado com os lobos.' },
   horta:   { name: 'Horta e Pomar', size: 2, time: 12, cost: { wood: 110, food: 60 }, unlock: 2,
              desc: 'Plante frutas, legumes e verduras nos canteiros. Elas crescem à vista e alimentam os trabalhadores. Cada nível libera novas plantas e mais canteiros.' },
   curral:  { name: 'Curral', size: 2, time: 14, cost: { wood: 160, stone: 50 }, unlock: 2,
@@ -76,6 +81,7 @@ const PLOTS = [
   { id: 'torre2', type: 'torre', c: 2, r: 9 },
   { id: 'horta', type: 'horta', c: 3, r: 7 },
   { id: 'muralha', type: 'muralha', c: 7, r: 10 },
+  { id: 'cabana', type: 'cabana', c: 12, r: 4 },
   { id: 'curral', type: 'curral', c: 12, r: 7 }
 ];
 const plotById = id => PLOTS.find(p => p.id === id);
@@ -91,10 +97,10 @@ const costFor = (type, L) => {
 };
 const timeFor = (type, L) => Math.round(DEF[type].time * Math.pow(1.6, L - 1) * (1 - relic('build')));
 const rateFor = (type, L) => L > 0 && DEF[type].prod ? DEF[type].rate * Math.pow(1.3, L - 1) * (1 + relic('prod')) : 0; // por hora
-const have = k => k === 'runes' ? S.runes : GEMS.includes(k) ? (S.gems[k] || 0) : PANTRY.includes(k) ? (S.pantry[k] || 0) : (S.res[k] || 0);
-function spend(c) { for (const k in c) { if (k === 'runes') S.runes -= c[k]; else if (GEMS.includes(k)) S.gems[k] -= c[k]; else if (PANTRY.includes(k)) S.pantry[k] -= c[k]; else S.res[k] -= c[k]; } }
+const have = k => k === 'runes' ? S.runes : TREAS.includes(k) ? (S.gems[k] || 0) : PANTRY.includes(k) ? (S.pantry[k] || 0) : (S.res[k] || 0);
+function spend(c) { for (const k in c) { if (k === 'runes') S.runes -= c[k]; else if (TREAS.includes(k)) S.gems[k] -= c[k]; else if (PANTRY.includes(k)) S.pantry[k] -= c[k]; else S.res[k] -= c[k]; } }
 function gain(k, v) { // soma respeitando o limite do armazém
-  if (k === 'runes') S.runes += v; else if (GEMS.includes(k)) S.gems[k] = (S.gems[k] || 0) + v;
+  if (k === 'runes') S.runes += v; else if (TREAS.includes(k)) S.gems[k] = (S.gems[k] || 0) + v;
   else if (PANTRY.includes(k)) S.pantry[k] = Math.min(pantryCap(), (S.pantry[k] || 0) + v);
   else { S.res[k] = Math.min(Math.max(S.res[k], capFor(k)), S.res[k] + v); S.stats[k] = (S.stats[k] || 0) + v; }
 }
@@ -105,6 +111,7 @@ const RELICS = [
   { id: 'machado', name: 'Machado de Rubi', desc: '+10% de dano das tropas', cost: { rubi: 5 }, fx: { dmg: .1 } },
   { id: 'coroa', name: 'Coroa de Diamante', desc: 'Obras 10% mais rápidas', cost: { diamante: 3 }, fx: { build: .1 } },
   { id: 'escudo', name: 'Escudo Dourado', desc: '+15% de vida das tropas', cost: { ouro: 20, rubi: 2 }, fx: { hp: .15 } },
+  { id: 'trofeu', name: 'Troféu de Alce', desc: '+20% de carne e couro nas caçadas', cost: { trofeu: 1, ouro: 3 }, fx: { hunt: .2 } },
   { id: 'olho', name: 'Olho de Odin', desc: '+25% de chance de achar gemas', cost: { rubi: 5, diamante: 5 }, fx: { gem: .25 } },
   { id: 'elmo', name: 'Elmo do Jarl', desc: '+25% de vida e dano do Jarl', cost: { ouro: 30, diamante: 3 }, fx: { hero: .25 } }
 ];
@@ -136,7 +143,7 @@ const armyCap = () => S.b.quartel.lvl ? 4 + 2 * S.b.quartel.lvl : 0;
 const armyCount = () => Object.values(S.army).reduce((a, b) => a + b, 0);
 const queued = () => S.train ? S.train.left : 0;
 const smithBonus = () => 1 + .1 * S.b.ferreiro.lvl;
-const troopHpF = () => smithBonus() * (1 + relic('hp')), troopDmgF = () => smithBonus() * (1 + relic('dmg'));
+const troopHpF = () => smithBonus() * (1 + relic('hp')) * (1 + .05 * (S.armor || 0)), troopDmgF = () => smithBonus() * (1 + relic('dmg'));
 const towerDmg = L => Math.round(16 * Math.pow(1.25, L - 1));
 const heroStats = () => { const L = S.b.salao.lvl, f = 1 + relic('hero'); return { hp: (450 + 90 * L) * f, dmg: (28 + 6 * L) * f }; };
 function waveDef(w) {
@@ -174,6 +181,9 @@ const MISSIONS = [
   { t: 'Melhore o Salão do Jarl ao nível 3', ok: () => lv('salao') >= 3, r: { runes: 30 } },
   { t: 'Construa uma Torre de Arqueiros', ok: () => Math.max(lv('torre1'), lv('torre2')) >= 1, r: { stone: 300 } },
   { t: 'Construa a Muralha', ok: () => lv('muralha') >= 1, r: { stone: 400 } },
+  { t: 'Construa a Cabana de Caça', ok: () => lv('cabana') >= 1, r: { wood: 300 } },
+  { t: 'Mande os caçadores à floresta', ok: () => (S.stats.expCaca || 0) >= 1, r: { runes: 15 } },
+  { t: 'Faça uma armadura de couro no Ferreiro', ok: () => (S.armor || 0) >= 1, r: { iron: 200 } },
   { t: 'Mande os mineiros à montanha', ok: () => (S.stats.expMina || 0) >= 1, r: { wood: 300 } },
   { t: 'Encontre uma pedra preciosa', ok: () => !!S.stats.gemFound, r: { runes: 20 } },
   { t: 'Vença a Onda 3', ok: () => S.wave > 3, r: { runes: 20 } },
@@ -213,8 +223,12 @@ if (!S || S.v !== 1) S = fresh();
 PLOTS.forEach(p => { if (!S.b[p.id]) S.b[p.id] = { lvl: 0, buf: 0, end: 0, to: 0 }; });
 if (!S.army) S.army = { war: 0, arc: 0, hus: 0 };
 if (!S.gems) S.gems = { ouro: 0, rubi: 0, diamante: 0 };
+TREAS.forEach(k => { if (S.gems[k] === undefined) S.gems[k] = 0; });
 if (!S.pantry) S.pantry = { leite: 0, ovos: 0, frutas: 0, legumes: 0, verduras: 0 };
 if (!S.exp) S.exp = { lenha: null, mina: null };
+if (S.exp.caca === undefined) S.exp.caca = null;
+if (S.pantry && S.pantry.carne === undefined) S.pantry.carne = 0;
+if (!S.armor) S.armor = 0;
 if (!S.fields) S.fields = [null, null, null, null, null];
 if (!S.relics) S.relics = {};
 if (!S.cur) S.cur = { leite: 0, ovos: 0 };
@@ -270,10 +284,11 @@ const Snd = {
 /* ========== Vida na vila: expedições, horta e curral ========== */
 const EXP = {
   lenha: { name: 'Lenhadores', one: 'lenhador', plot: 'serraria', spot: [13, 1], rate: 14, title: 'Os lenhadores derrubam um pinheiro!' },
-  mina:  { name: 'Mineiros', one: 'mineiro', plot: 'pedreira', spot: [2, 2], rate: 11, title: 'Os mineiros quebram a rocha!' }
+  mina:  { name: 'Mineiros', one: 'mineiro', plot: 'pedreira', spot: [2, 2], rate: 11, title: 'Os mineiros quebram a rocha!' },
+  caca:  { name: 'Caçadores', one: 'caçador', plot: 'cabana', spot: [15, 4], rate: 2.5, title: 'Os caçadores cercam o alce!' }
 };
 const DURS = [{ s: 15, t: '15 s' }, { s: 60, t: '1 min' }, { s: 300, t: '5 min' }, { s: 1800, t: '30 min' }];
-const workersMax = k => Math.min(6, 1 + (k === 'lenha' ? S.b.serraria.lvl : S.b.pedreira.lvl));
+const workersMax = k => Math.min(6, 1 + (k === 'lenha' ? S.b.serraria.lvl : k === 'caca' ? S.b.cabana.lvl : S.b.pedreira.lvl));
 const mealsFor = (n, s) => Math.max(1, Math.ceil(n * s / 300));
 const MEAL_FOOD = 20; // sem despensa, cada refeição sai por 20 de comida
 const mealsHave = () => PANTRY.reduce((a, k) => a + Math.floor(S.pantry[k] || 0), 0);
@@ -281,6 +296,7 @@ const varietyOk = () => PANTRY.filter(k => (S.pantry[k] || 0) >= 1).length >= 3;
 function expYield(k, n, s, fed) {
   const min = s / 60, f = n * (fed ? 1.25 : 1), e = EXP[k]; // base por viagem + por minuto
   if (k === 'lenha') return { wood: Math.round(f * (18 + min * e.rate) * Math.pow(1.25, S.b.serraria.lvl - 1)) };
+  if (k === 'caca') { const h = Math.pow(1.2, Math.max(0, S.b.cabana.lvl - 1)) * (1 + relic('hunt')); return { carne: Math.max(1, Math.round(f * (3 + min * e.rate) * h)), couro: Math.max(1, Math.round(f * (1 + min * .8) * h)) }; }
   const out = { stone: Math.round(f * (14 + min * e.rate) * Math.pow(1.25, Math.max(0, S.b.pedreira.lvl - 1))) };
   if (S.b.mina.lvl) out.iron = Math.round(f * (4 + min * 4) * Math.pow(1.25, S.b.mina.lvl - 1));
   return out;
@@ -510,6 +526,7 @@ function buildTerrain() {
     if (coast) continue;
     const key = c + ',' + r, rot = Math.floor(rnd() * 6) * Math.PI / 3;
     if (t === 'mountain') add(['mountain_A', 'mountain_B', 'mountain_C', 'mountain_A_grass_trees', 'mountain_B_grass_trees'][Math.floor(rnd() * 5)], x, z, rot);
+    else if (t === 'forest' && plotAt.has(key)) { if (rnd() < .5) add(['tree_single_A', 'tree_single_B'][Math.floor(rnd() * 2)], x + (rnd() - .5) * 1.2, z + (rnd() - .5) * 1.2, rot, .8); }
     else if (t === 'forest') add(rnd() < .15 ? ['hills_A_trees', 'hills_B_trees'][Math.floor(rnd() * 2)] : ['trees_A_large', 'trees_B_large', 'trees_A_medium', 'trees_B_medium'][Math.floor(rnd() * 4)], x, z, rot);
     else if (!plotAt.has(key)) {
       const k = rnd();
@@ -522,7 +539,7 @@ function buildTerrain() {
 
 /* ---------- prédios ---------- */
 const plotGroups = {};
-const PLOT_H = { muralha: 1.3, horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
+const PLOT_H = { cabana: 1.2, muralha: 1.3, horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
 function put(g, n, x = 0, z = 0, rot = 0, s = 1) { const o = model(n, s); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); return o; }
 function refreshPlot(p) {
   let g = plotGroups[p.id];
@@ -545,6 +562,14 @@ function refreshPlot(p) {
       const R = 1.45, fs = R / 2.06;
       for (let k = 0; k < 6; k++) { if (k === 1) continue; const a = (30 + 60 * k) * Math.PI / 180, f = shadowize(G.Fence.scene.clone(true)); f.scale.set(fs, fs * .85, fs); f.position.set(Math.cos(a) * R * .866, 0, Math.sin(a) * R * .866); f.rotation.y = -a + Math.PI / 2; g.add(f); }
       put(g, 'barrel', -.5, -.55, 0, .7); put(g, 'sack', .55, -.6, .5, .8); if (tier >= 2) { const c = shadowize(G.Crate.scene.clone(true)); c.scale.setScalar(.3 / heightOf(c)); c.position.set(.1, 0, -.85); g.add(c); }
+      break; }
+    case 'cabana': {
+      put(g, 'tent', 0, -.15, .3, 1.15); put(g, 'weaponrack', .7, .45, -.6, .8); put(g, 'barrel', -.7, .5, 0, .65);
+      const rack = new THREE.Group(); rack.position.set(-.55, 0, -.55);
+      [-.18, .18].forEach(x => rack.add(mesh(new THREE.CylinderGeometry(.03, .03, .55, 5), '#5c3d22', x, .27, 0)));
+      rack.add(mesh(new THREE.CylinderGeometry(.025, .025, .45, 5), '#5c3d22', 0, .5, 0)); rack.children[2].rotation.z = Math.PI / 2;
+      const hide = mesh(new THREE.BoxGeometry(.32, .3, .02), '#a8743f', 0, .32, .03); rack.add(hide); g.add(rack);
+      if (tier >= 2) { const ant = new THREE.Group(); ant.position.set(0, 1, .45); [-1, 1].forEach(sd => { const b = mesh(new THREE.CylinderGeometry(.015, .02, .3, 4), '#e8d6a8', sd * .1, .12, 0); b.rotation.z = -sd * .6; ant.add(b); const b2 = mesh(new THREE.CylinderGeometry(.012, .015, .15, 4), '#e8d6a8', sd * .2, .22, 0); b2.rotation.z = sd * .3; ant.add(b2); }); g.add(ant); }
       break; }
     case 'quartel': put(g, 'building_barracks_red'); if (tier >= 2) put(g, 'weaponrack', -.65, .55, .4, .8); if (tier >= 3) put(g, 'target', .7, .5, -.5, .7); break;
     case 'ferreiro': put(g, 'building_blacksmith_red'); if (tier >= 2) put(g, 'barrel', .65, .55, 0, .7); break;
@@ -673,7 +698,7 @@ function updateTags() {
     if (b.end) { const total = timeFor(p.type, b.to) * 1000, left = b.end - Date.now(); prog.querySelector('i').style.width = Math.max(0, Math.min(100, (1 - left / total) * 100)) + '%'; prog.querySelector('b').textContent = fmtT(left / 1000); }
     else if (tr) { const T = S.train, part = 1 - (T.next - Date.now()) / (T.per * 1000); prog.querySelector('i').style.width = Math.max(0, Math.min(100, part * 100)) + '%'; prog.querySelector('b').textContent = `⚔ ${T.left} · ${fmtT(trainLeftS())}`; }
     const xk = expOf(p), xe = xk && S.exp[xk], xdone = xe && Date.now() >= xe.end;
-    if (xe && !b.end && !xdone) { prog.hidden = false; prog.classList.add('train'); prog.querySelector('i').style.width = Math.min(100, (Date.now() - xe.start) / (xe.s * 1000) * 100) + '%'; prog.querySelector('b').textContent = (xk === 'lenha' ? '🪓 ' : '⛏ ') + fmtT((xe.end - Date.now()) / 1000); }
+    if (xe && !b.end && !xdone) { prog.hidden = false; prog.classList.add('train'); prog.querySelector('i').style.width = Math.min(100, (Date.now() - xe.start) / (xe.s * 1000) * 100) + '%'; prog.querySelector('b').textContent = ({ lenha: '🪓 ', mina: '⛏ ', caca: '🏹 ' })[xk] + fmtT((xe.end - Date.now()) / 1000); }
     const curOk = p.type === 'curral' && L && S.cur.ovos + S.cur.leite >= 3;
     const show = xdone || curOk || (d.prod && L && !b.end && b.buf >= Math.max(20, bufCap(p.type, L) * .08));
     bub.hidden = !show;
@@ -708,7 +733,7 @@ cv.addEventListener('pointermove', e => {
     if (moved) { const k = 2 * cam.d * Math.tan(camera.fov * Math.PI / 360) / innerHeight; cam.x = drag.cx - dx * k; cam.z = drag.cz - dy * k / Math.sin(cam.pitch); placeCamera(); }
   }
 });
-const expOf = p => p.type === 'serraria' ? 'lenha' : p.type === 'pedreira' ? 'mina' : null;
+const expOf = p => p.type === 'serraria' ? 'lenha' : p.type === 'pedreira' ? 'mina' : p.type === 'cabana' ? 'caca' : null;
 const up = e => {
   pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null;
   if (CINE) { if (pointers.size === 0) drag = null; return; }
@@ -1119,7 +1144,7 @@ const PEN_EXTRA = [[12, 6], [13, 6], [11, 7], [13, 7], [12, 8], [11, 6]];
 FIELDS.concat(PEN_EXTRA, [EXP.lenha.spot, EXP.mina.spot, [12, 1], [3, 2]]).forEach(([c, r]) => plotAt.add(c + ',' + r));
 function lifeModels() { // [chave, url]
   const L = [['Cow', 'models/farm/Cow.glb'], ['Husky', 'models/farm/Husky.glb'], ['Fence', 'models/farm/Prop_WoodenFence_Single.glb'],
-    ['Wagon', 'models/farm/Prop_Wagon.glb'], ['Crate', 'models/farm/Prop_Crate.glb']];
+    ['Wagon', 'models/farm/Prop_Wagon.glb'], ['Crate', 'models/farm/Prop_Crate.glb'], ['Deer', 'models/farm/Deer.glb'], ['Stag', 'models/farm/Stag.glb'], ['Fox', 'models/farm/Fox.glb'], ['Wolf', 'models/farm/Wolf.glb']];
   Object.values(CROPS).forEach(C => { ['1', '2', '3', '4', 'Crop'].forEach(s => L.push([C.m + '_' + s, `models/crops/${C.m}_${s}.glb`])); });
   return L;
 }
@@ -1675,14 +1700,138 @@ function finishEnding() {
   document.body.classList.remove('cine'); $('#cine').hidden = true; cleanupBattle(); placeCamera(); openSheet(html);
 }
 
+/* ---------- caça: clareira na floresta, animais selvagens e caçadores ---------- */
+const CLEARING = [[15, 3], [16, 3], [15, 4], [16, 4], [15, 5], [16, 5]];
+CLEARING.concat([[12, 4]]).forEach(([c, r]) => plotAt.add(c + ',' + r));
+const CLR = { x0: 14.5, x1: 18, z0: -4.6, z1: .6 };
+const WILD_H = { Deer: .5, Stag: .62, Fox: .26, Wolf: .38 };
+const wild = [];
+function rndClear() { return [CLR.x0 + Math.random() * (CLR.x1 - CLR.x0), CLR.z0 + Math.random() * (CLR.z1 - CLR.z0)]; }
+function spawnWild(kind, at) {
+  const a = mkBeast(kind, WILD_H[kind]); const [x, z] = at || rndClear(); a.o.position.set(x, 0, z); a.o.rotation.y = Math.random() * TAU; scene.add(a.o);
+  const w = Object.assign(a, { kind, tx: x, tz: z, wait: Math.random() * 3, sp: kind === 'Fox' ? .5 : .32, dead: false, deadT: 0 }); wild.push(w); return w;
+}
+function buildWild() { if (!G.Deer) return; ['Deer', 'Deer', 'Stag', 'Fox', 'Deer'].forEach(k => spawnWild(k)); }
+function playB(a, k) { if (a.cur === k) return; a.act[a.cur].fadeOut(.25); a.act[k].reset().fadeIn(.25).play(); a.cur = k; }
+function stepWild(dt) {
+  for (let i = wild.length - 1; i >= 0; i--) {
+    const a = wild[i]; a.mixer.update(dt);
+    if (a.dead) { a.deadT += dt; if (a.deadT > 2.5) a.o.position.y -= dt * .3; if (a.deadT > 4) { scene.remove(a.o); wild.splice(i, 1); if (!a.noRespawn) setTimeout(() => { if (wild.filter(w => !w.dead).length < 6) spawnWild(a.kind === 'Wolf' ? 'Deer' : a.kind); }, 6000); } continue; }
+    if (a.held) continue; // presa de uma cena
+    const p = a.o.position, dx = a.tx - p.x, dz = a.tz - p.z, d = Math.hypot(dx, dz);
+    if (a.wait > 0) { a.wait -= dt; continue; }
+    if (d < .05) { a.wait = 1.5 + Math.random() * 4; [a.tx, a.tz] = rndClear(); playB(a, Math.random() < .5 ? 'eat' : 'idle'); continue; }
+    const st = Math.min(d, (a.flee ? 2.4 : a.sp) * dt); p.x += dx / d * st; p.z += dz / d * st; a.o.rotation.y = Math.atan2(dx, dz); playB(a, a.flee ? 'run' : 'walk');
+    if (a.flee && d < .1) a.flee = false;
+  }
+}
+function killWild(a) { a.dead = true; a.deadT = 0; a.act[a.cur].fadeOut(.15); a.act.die.reset().fadeIn(.15).play(); a.cur = 'die'; burstAt(a.o.position.x, .3, a.o.position.z, '#a83a2a', 8, .03); }
+
+/* flechas soltas (fora da batalha) */
+const looseArrows = [];
+function fireArrow(from, to, onHit, slow) {
+  const m = new THREE.Mesh(arrowGeo, arrowMat); m.position.set(from[0], from[1], from[2]); scene.add(m);
+  looseArrows.push({ m, from, to, t: 0, dur: Math.max(.25, Math.hypot(to[0] - from[0], to[2] - from[2]) / 12) * (slow || 1), onHit });
+  Snd.shoot();
+}
+function stepArrows(dt) {
+  for (let i = looseArrows.length - 1; i >= 0; i--) {
+    const a = looseArrows[i]; a.t += dt / a.dur; const k = Math.min(1, a.t), [x0, y0, z0] = a.from, [x1, y1, z1] = a.to;
+    const x = x0 + (x1 - x0) * k, z = z0 + (z1 - z0) * k, y = y0 + (y1 - y0) * k + .5 * 4 * k * (1 - k);
+    a.m.lookAt(x + (x - a.m.position.x), y + (y - a.m.position.y), z + (z - a.m.position.z)); a.m.position.set(x, y, z);
+    if (a.t >= 1) { scene.remove(a.m); looseArrows.splice(i, 1); a.onHit && a.onHit(); }
+  }
+}
+
+/* caçadores em ação durante a expedição */
+const hunters = [];
+function mkHunter() { const c = mkChar('Ranger', .3, null, 'bow_withString'); c.o.traverse(m => { if (m.isMesh) m.castShadow = true; }); addFace(c); return c; }
+const gateE = () => wallPt('e', WALL.e.gate);
+function huntPos(i, n) { const [x, z] = hexPos(...EXP.caca.spot), a = (i / Math.max(1, n)) * TAU + 2.6; return [x - 1.2 + Math.cos(a) * .7, z + Math.sin(a) * .9]; }
+function refreshHunters(now) {
+  const e = S.exp.caca, want = e ? Math.min(4, e.n) : 0;
+  if (CINE && CINE.kind === 'caca') return;
+  while (hunters.length > want) { const c = hunters.pop(); scene.remove(c.o); if (c.pile) scene.remove(c.pile); }
+  while (hunters.length < want) {
+    const c = mkHunter(), p = plotById('cabana'), [hx, hz] = hexPos(p.c, p.r), i = hunters.length, fresh = now - e.start < 6000, [px, pz] = huntPos(i, want);
+    c.o.position.set(fresh ? hx + (Math.random() - .5) * .5 : px, 0, fresh ? hz + 1 : pz);
+    c.route = fresh && S.b.muralha.lvl ? [gateE(), [px, pz]] : [[px, pz]];
+    c.pile = new THREE.Group(); c.pile.position.set(px - .35, 0, pz + .3); scene.add(c.pile);
+    Object.assign(c, { i, cool: 1 + i * .7, aim: null }); setFace(c, 'calm'); scene.add(c.o); hunters.push(c);
+    const pre = fresh ? 0 : Math.min(4, Math.round((now - e.start) / (e.s * 1000) * 4)); for (let k = 0; k < pre; k++) addMeat(c);
+  }
+}
+function addMeat(c) {
+  const n = c.pile.children.length; if (n >= 6) return;
+  const m = mesh(new THREE.BoxGeometry(.14, .07, .1), n % 3 === 2 ? '#a8743f' : '#9b3b2a'); m.position.set((n % 3 - 1) * .13, .04 + Math.floor(n / 3) * .07, 0); m.rotation.y = Math.random() * .5; c.pile.add(m);
+}
+function stepHunters(dt, now) {
+  if (CINE && CINE.kind === 'caca') return;
+  const e = S.exp.caca; if (!e) return; const done = now >= e.end;
+  hunters.forEach(c => {
+    c.mixer.update(dt); stepFace(c, dt);
+    const p = c.o.position, tgt = c.route[0], dx = tgt[0] - p.x, dz = tgt[1] - p.z, d = Math.hypot(dx, dz);
+    if (d > .05) { const st = Math.min(d, 2 * dt); p.x += dx / d * st; p.z += dz / d * st; c.o.rotation.y = Math.atan2(dx, dz); anim(c, 'run'); return; }
+    if (c.route.length > 1) { c.route.shift(); return; }
+    if (done) { anim(c, 'idle'); setFace(c, 'happy'); return; }
+    if ((c.cool -= dt) > 0) { if (c.aim && !c.aim.dead) c.o.rotation.y = Math.atan2(c.aim.o.position.x - p.x, c.aim.o.position.z - p.z); return; }
+    const prey = wild.filter(a => !a.dead && !a.held && a.kind !== 'Wolf').sort((a, b) => a.o.position.distanceTo(p) - b.o.position.distanceTo(p))[0];
+    if (!prey) { c.cool = 1; anim(c, 'idle'); return; }
+    c.aim = prey; c.o.rotation.y = Math.atan2(prey.o.position.x - p.x, prey.o.position.z - p.z); anim(c, 'shoot', .7); setFace(c, 'angry'); c.cool = 3.2 + Math.random() * 1.5;
+    setTimeout(() => {
+      if (!c.o.parent || prey.dead) return; const q = prey.o.position;
+      fireArrow([p.x, .75, p.z], [q.x, .3, q.z], () => { if (prey.dead) return; if (Math.random() < .75) { killWild(prey); addMeat(c); setFace(c, 'happy'); c.faceT = 1.2; } else { prey.flee = true; [prey.tx, prey.tz] = rndClear(); } });
+    }, 400);
+  });
+}
+
+/* cena da caçada */
+function cineCaca(e) {
+  hunters.splice(0).forEach(c => { scene.remove(c.o); if (c.pile) scene.remove(c.pile); });
+  const [sx, sz] = hexPos(...EXP.caca.spot), list = [];
+  const n = Math.min(3, e.n); for (let i = 0; i < n; i++) { const c = mkHunter(); c.o.position.set(sx - 1.5 + i * .45, 0, sz + .9 - i * .3); c.o.rotation.y = Math.PI / 2; scene.add(c.o); setFace(c, 'calm'); list.push(c); }
+  const stag = spawnWild('Stag', [sx + 1.6, sz - .2]); stag.held = true; stag.noRespawn = true; stag.o.rotation.y = -Math.PI / 2 - .3; playB(stag, 'eat');
+  let wolf = null, shot = false, wolfShot = false, arrowObj = null;
+  const dur = e.wolf ? 9 : 6.6, troph = e.gems && e.gems.trofeu;
+  const keys = [{ t: 1.2, p: [sx - 2.4, 1.9, sz + 2.6], l: [sx + .4, .4, sz] }, { t: 2.6, p: [sx - 2.2, 1.5, sz + 2], l: [sx + 1.5, .45, sz - .2] }, { t: 4, p: [sx + .2, .9, sz + 1.5], l: [sx + 1.6, .3, sz - .2] }, { t: 5.2, p: [sx + 3.2, 1.3, sz + 1.6], l: [sx + 1.4, .3, sz - .2] }];
+  if (e.wolf) keys.push({ t: 7, p: [sx + .6, 1.6, sz + 2.4], l: [sx - .9, .3, sz - .6] }, { t: dur, p: [sx - 2.4, 2.2, sz + 3.6], l: [sx - .8, .3, sz] });
+  else keys.push({ t: dur, p: [sx - 1.2, 2.2, sz + 3.4], l: [sx + .4, .3, sz] });
+  startCine({ kind: 'caca', dur, title: EXP.caca.title, actors: list.slice(),
+    keys,
+    step(t, dt) {
+      list.forEach(c => { c.mixer.update(dt); stepFace(c, dt); });
+      stag.mixer.update(dt); stepArrows(dt);
+      if (t > 1.6 && !shot) { shot = true; const c = list[0]; anim(c, 'shoot', .8); setFace(c, 'angry'); CINE.slow = .35;
+        setTimeout(() => { if (!CINE) return; const p = c.o.position, q = stag.o.position; fireArrow([p.x, .78, p.z], [q.x, .45, q.z], () => { killWild(stag); CINE.slow = 1; CINE.shake = .2; Snd.timber(); list.forEach(h => { anim(h, 'cheer', .9); setFace(h, 'cheer'); }); }, 2.2); }, 280); }
+      if (shot && !stag.dead && t > 2.4) { stag.o.rotation.y += Math.sin(t * 20) * .002; }
+      if (e.wolf) {
+        if (t > 5.4 && !wolf) { wolf = spawnWild('Wolf', [sx - .2, sz - 2.4]); wolf.held = true; wolf.noRespawn = true; playB(wolf, 'run'); $('#cineCap').textContent = 'Lobos!'; list.forEach(h => setFace(h, 'scared')); Snd.tone(320, .6, { type: 'sawtooth', v: .05, to: 520 }); }
+        if (wolf && !wolf.dead) { wolf.mixer.update(dt); const tg = list[1] || list[0], p = wolf.o.position, q = tg.o.position, dx = q.x - p.x, dz = q.z - p.z, d = Math.hypot(dx, dz); wolf.o.rotation.y = Math.atan2(dx, dz); if (d > .45) { p.x += dx / d * 2.6 * dt; p.z += dz / d * 2.6 * dt; } else if (wolf.cur !== 'atk') { playB(wolf, 'atk'); anim(tg, 'hit', .4); setFace(tg, 'hurt'); Snd.hit(); } }
+        if (t > 6.6 && wolf && !wolfShot) { wolfShot = true; const c = list[0]; anim(c, 'shoot', .6); setFace(c, 'shout'); setTimeout(() => { if (!CINE || !wolf) return; const p = c.o.position, q = wolf.o.position; fireArrow([p.x, .78, p.z], [q.x, .35, q.z], () => killWild(wolf)); }, 250); }
+        if (wolf && wolf.dead) wolf.mixer.update(dt);
+      }
+    },
+    finish() { [stag, wolf].forEach(a => { if (!a) return; scene.remove(a.o); const i = wild.indexOf(a); if (i >= 0) wild.splice(i, 1); }); looseArrows.splice(0).forEach(a => scene.remove(a.m)); },
+    card: rewardCard(troph ? 'Caçada lendária!' : e.wolf ? 'Caçada com lobos!' : 'Boa caçada!', `${e.n} caçador${e.n > 1 ? 'es' : ''} voltaram${e.wolf ? ' · os lobos levaram parte da caça' : e.fed ? ' · bem alimentados +25%' : ''}`, Object.assign({}, e.rew, e.gems || {})) });
+}
+
+/* armaduras de couro no Ferreiro */
+const armorCost = l => ({ couro: 10 + l * 8, iron: 40 + l * 30 });
+function armorHTML() {
+  const l = S.armor || 0, c = armorCost(l);
+  return `<div class="exp"><div class="exph"><b>Armaduras de couro</b><small>nível ${l} de 10</small></div>
+    <p class="desc" style="margin:4px 0">Cada nível dá +5% de vida a todas as tropas (agora +${l * 5}%). O couro vem dos caçadores.</p>
+    ${l >= 10 ? '<p class="ok">Armaduras no máximo!</p>' : `${costHTML(c)}<div class="actions"><button class="btn" data-a="armor" ${canAfford(c) ? '' : 'disabled'}>Forjar nível ${l + 1}</button></div>`}</div>`;
+}
+
 /* ---------- laço de render ---------- */
 let lastT = performance.now();
 function frame(now) {
   const dt = Math.min(100, now - lastT); lastT = now;
   PLOTS.forEach(refreshPlot); rebuildWalls();
   const ds = dt / 1000, wall = Date.now();
-  refreshFields(wall); refreshCrews(wall); regrow(ds);
-  if (CINE) stepCine(ds); else { stepHerd(ds); stepCrews(ds, wall); }
+  refreshFields(wall); refreshCrews(wall); refreshHunters(wall); regrow(ds);
+  if (CINE) stepCine(ds); else { stepHerd(ds); stepCrews(ds, wall); stepWild(ds); stepHunters(ds, wall); stepArrows(ds); }
   if (B) stepBattle(ds); else stepFolk(dt);
   guards.forEach(g => g.mixer.update(dt / 1000));
   if (ship) { ship.position.y = -.15 + Math.sin(now / 900) * .05; ship.rotation.z = Math.sin(now / 1300) * .03; }
@@ -1718,6 +1867,8 @@ function renderSheet() {
   if (p.type === 'salao') html += `<div class="stat"><span>Poder da vila</span><span>${fmt(power())}</span></div><div class="actions" style="margin:4px 0 8px"><button class="btn ghost" data-a="treasure">${icoSVG('ouro')} Tesouro do Jarl</button></div>`;
   if (p.type === 'serraria' && L) html += expHTML('lenha');
   if (p.type === 'pedreira' && L) html += expHTML('mina');
+  if (p.type === 'cabana' && L) html += expHTML('caca');
+  if (p.type === 'ferreiro' && L) html += armorHTML();
   if (p.type === 'horta') html += hortaHTML();
   if (p.type === 'curral') html += curralHTML();
   if (b.end) {
@@ -1959,15 +2110,20 @@ function startExp(k) {
   const fed = varietyOk(); payMeals(meals);
   const rew = expYield(k, n, s, fed), now = Date.now();
   S.exp[k] = { n, s, start: now, end: now + s * 1000, rew, gems: k === 'mina' ? rollGems(n, s) : null, fed };
+  if (k === 'caca') { // lobos e troféu decididos na saída
+    const e = S.exp[k]; e.wolf = Math.random() < (herd().cao ? .1 : .25) * Math.min(1, .5 + s / 120);
+    if (e.wolf) for (const r in e.rew) e.rew[r] = Math.max(1, Math.round(e.rew[r] * .7));
+    if (Math.random() < Math.min(.25, .04 + s / 3600 * .1) || !S.stats.trofeuFirst && (S.stats.expCaca || 0) >= 2) { e.gems = { trofeu: 1 }; }
+  }
   Snd.build(); toast(`${n} ${n > 1 ? EXP[k].name.toLowerCase() : EXP[k].one} saíram para trabalhar`); save(); dirty = true; closeSheet();
 }
 function finishExp(k) {
   const e = S.exp[k]; if (!e || Date.now() < e.end || CINE || B) return;
   for (const r in e.rew) gain(r, e.rew[r]);
-  if (e.gems) for (const g in e.gems) { gain(g, e.gems[g]); S.stats.gemFound = (S.stats.gemFound || 0) + e.gems[g]; }
-  S.stats[k === 'lenha' ? 'expLenha' : 'expMina'] = (S.stats[k === 'lenha' ? 'expLenha' : 'expMina'] || 0) + 1;
+  if (e.gems) for (const g in e.gems) { gain(g, e.gems[g]); if (g === 'trofeu') S.stats.trofeuFirst = 1; else S.stats.gemFound = (S.stats.gemFound || 0) + e.gems[g]; }
+  const sk = { lenha: 'expLenha', mina: 'expMina', caca: 'expCaca' }[k]; S.stats[sk] = (S.stats[sk] || 0) + 1;
   S.exp[k] = null; save(); dirty = true;
-  (k === 'lenha' ? cineLenha : cineMina)(e);
+  ({ lenha: cineLenha, mina: cineMina, caca: cineCaca })[k](e);
 }
 function expSpeedCost(k) { const e = S.exp[k]; return e ? Math.ceil(Math.max(0, e.end - Date.now()) / 60000) : 0; }
 function speedExp(k) { const c = expSpeedCost(k); if (S.runes < c) { toast('Runas insuficientes'); Snd.no(); return; } S.runes -= c; S.exp[k].end = Date.now(); save(); dirty = true; finishExp(k); }
@@ -1989,6 +2145,7 @@ function expHTML(k) {
     <div class="exprow"><span>Refeições</span><span>${icoSVG('meal')} ${meals}${fromPantry < meals ? ` <small>(${fromPantry} da despensa + ${fmt(food)} comida)</small>` : ' <small>da despensa</small>'}</span></div>
     <div class="exprow"><span>Traz</span><span class="costs inline">${Object.entries(y).map(([r, v]) => `<span class="cost">${icoSVG(r)}${fmt(v)}</span>`).join('')}${k === 'mina' ? `<span class="cost">${icoSVG('ouro')}?</span>` : ''}</span></div>
     ${fed ? '<p class="ok">Despensa variada: +25% de rendimento</p>' : '<p class="sub" style="margin:4px 0">Com 3 tipos de alimento na despensa (leite, ovos, frutas, legumes, verduras) eles rendem +25%.</p>'}
+    ${k === 'caca' ? `<p class="sub" style="margin:4px 0">Lobos podem atacar e reduzir a caça${herd().cao ? ' (seus cães de guarda ajudam)' : ' (cães de guarda do Curral diminuem o risco)'}. Às vezes trazem um troféu de alce.</p>` : ''}
     ${k === 'mina' ? `<p class="sub" style="margin:4px 0">Podem achar ouro, rubi e diamante${gemChance() > 1 ? ` (bônus de +${Math.round((gemChance() - 1) * 100)}%)` : ''}.${S.b.mina.lvl ? '' : ' A Mina de Ferro aumenta a chance e traz ferro.'}</p>` : ''}
     <div class="actions"><button class="btn" data-a="exp-go" data-k="${k}" ${canFeed(meals) ? '' : 'disabled'}>Enviar ${sel.n > 1 ? X.name.toLowerCase() : X.one}</button></div></div>`;
   return h;
@@ -2078,6 +2235,7 @@ sheet.addEventListener('click', e => {
     case 'curral-get': curralCollect(); break;
     case 'treasure': openTreasure(); break;
     case 'relic': { const r = RELICS.find(x => x.id === k); if (!canAfford(r.cost)) break; spend(r.cost); S.relics[k] = 1; Snd.done(); toast(`${r.name} forjada!`); save(); dirty = true; openTreasure(); break; }
+    case 'armor': { const c = armorCost(S.armor || 0); if (!canAfford(c) || S.armor >= 10) break; spend(c); S.armor = (S.armor || 0) + 1; Snd.done(); toast(`Armaduras de couro nível ${S.armor}!`); save(); dirty = true; renderSheet(); break; }
     case 'sell': if (S.gems[k] > 0) { S.gems[k]--; S.runes += GEM_RUNES[k]; Snd.collect(); save(); dirty = true; openTreasure(); } break;
   }
 });
@@ -2122,7 +2280,7 @@ function pickField(sx, sy) {
 function tick() {
   finished = []; trainedNow = 0; advance(Date.now());
   refreshHerd(); refreshPiles();
-  ['lenha', 'mina'].forEach(k => { const e = S.exp[k]; if (e && Date.now() >= e.end && !e.told) { e.told = 1; Snd.done(); toast(`${EXP[k].name} terminaram! Toque no ✓ para ver`); save(); } });
+  ['lenha', 'mina', 'caca'].forEach(k => { const e = S.exp[k]; if (e && Date.now() >= e.end && !e.told) { e.told = 1; Snd.done(); toast(`${EXP[k].name} terminaram! Toque no ✓ para ver`); save(); } });
   if (trainedNow) { dirty = true; refreshGuards(); if (sheetFor === 'quartel' && !sheet.hidden) renderSheet(); }
   finished.forEach(id => { const p = plotById(id); Snd.done(); burst(p, '#f3d27a', 24); toast(`${DEF[p.type].name} chegou ao nível ${S.b[id].lvl}!`); dirty = true; });
   if (finished.length) refreshDecor();
@@ -2141,7 +2299,7 @@ resize(); renderHUD(); renderBuilders();
 loadAll().then(() => {
   buildTerrain(); ship = buildShip();
   for (let i = 0; i < 6; i++) { const c = model(i % 2 ? 'cloud_small' : 'cloud_big', 2.2); c.traverse(m => { if (m.isMesh) m.castShadow = false; }); c.position.set(-35 + i * 13, 15 + (i % 3), -26 + (i % 2) * 6); scene.add(c); clouds.push(c); }
-  buildFolk(); buildTags(); refreshDecor(); refreshGuards(); buildWorkSpots(); buildFieldTags(); refreshHerd(); refreshPiles();
+  buildFolk(); buildTags(); refreshDecor(); refreshGuards(); buildWorkSpots(); buildFieldTags(); refreshHerd(); refreshPiles(); buildWild();
   $('#loading').classList.add('done'); setTimeout(() => $('#loading').remove(), 600);
   renderer.setAnimationLoop(frame);
   if (!S.intro) {
