@@ -225,6 +225,7 @@ PLOTS.forEach(p => { if (!S.b[p.id]) S.b[p.id] = { lvl: 0, buf: 0, end: 0, to: 0
 if (!S.army) S.army = { war: 0, arc: 0, hus: 0 };
 if (S.music === undefined) S.music = true;
 if (S.voice === undefined) S.voice = true;
+if (S.bintro === undefined) S.bintro = true;
 if (!S.gfx) S.gfx = 'auto';
 if (!S.daily) S.daily = {};
 if (S.tut === undefined) S.tut = (S.mission > 3 || (S.b && S.b.salao && S.b.salao.lvl > 2)) ? 99 : 0;
@@ -929,12 +930,14 @@ function startBattle() {
     const u = mkUnit('enemy', kind, x, z); u.spawnAt = at; u.rise = lane !== 0; B.queue.push(u);
   });
   // drakkar inimigo
-  B.ship = buildShip(true); B.ship.position.set(-3, -.15, 34); B.ship.rotation.y = Math.PI / 2; scene.add(B.ship);
+  B.ship = buildDrakkar(true, true); B.ship.scale.setScalar(.75); B.ship.position.set(-3, -.05, 34); B.ship.rotation.y = Math.PI / 2; scene.add(B.ship);
+  B.extraShips = w % 10 === 0 ? [-1, 1].map(sd => { const sh = buildDrakkar(true, false); sh.scale.setScalar(.65); sh.position.set(-3 + sd * 6, -.05, 39); sh.rotation.y = Math.PI / 2 + sd * .1; sh.userData.dz = 5; scene.add(sh); return sh; }) : [];
   document.body.classList.add('battle'); $('#bhud').hidden = false; $('#bWave').textContent = 'Onda ' + w + (w % 10 === 0 ? ' · Chefe' : '');
   $('#bHint').hidden = false; setTimeout(() => { const h = $('#bHint'); if (h) h.hidden = true; }, 6000);
   folk.forEach(f => f.o.visible = false); guards.forEach(g => g.o.visible = false);
   B.follow = true; B.slow = 1; B.oldD = cam.d; cam.d = Math.min(cam.d, 20); cam.x = hx; cam.z = hz + 2.6; placeCamera(); $('#btnCam').classList.add('on');
-  Snd.horn(); Music.start('batalha'); say('Os draugr se aproximam! Defendam a vila!');
+  Music.start('batalha');
+  if (S.bintro !== false) startIntro(); else { Snd.horn(); say('Os draugr se aproximam! Defendam a vila!'); }
 }
 
 function chooseTarget(u) {
@@ -1012,6 +1015,7 @@ function separate() {
 function stepBattle(dt) {
   if (!B) return;
   camRight.setFromMatrixColumn(camera.matrixWorld, 0);
+  if (B.intro) { stepIntro(dt); return; }
   if (B.ending) { stepEnding(dt); return; }
   if (B.pendEnd && (B.pendEnd.t -= dt) <= 0) { const e = B.pendEnd; B.pendEnd = null; startEnding(e.win, e.html); return; }
   B.cutCd = Math.max(0, (B.cutCd || 0) - dt);
@@ -1020,7 +1024,7 @@ function stepBattle(dt) {
   B.t += dt;
   stepDmg(dt);
   // drakkar inimigo chega à praia
-  if (B.ship) { const k = Math.min(1, B.t / 5); B.ship.position.z = 34 - (34 - 12.6) * (1 - Math.pow(1 - k, 2)); B.ship.position.y = -.15 + Math.sin(B.t * 1.4) * .05; B.ship.rotation.z = Math.sin(B.t) * .03; }
+  if (B.ship) { const k = Math.min(1, B.t / 5); [B.ship].concat(B.extraShips || []).forEach((sh, i) => { const dz = sh.userData.dz || 0; sh.position.z = 34 + dz - (34 - 12.6) * (1 - Math.pow(1 - k, 2)); sh.position.y = -.05 + Math.sin(B.t * 1.4 + i) * .05; sh.rotation.z = Math.sin(B.t + i) * .03; sh.userData.update(B.t, dt, k < 1); }); }
   B.queue = B.queue.filter(u => { if (B.t >= u.spawnAt) { activate(u, u.rise); return false; } return true; });
   B.units.forEach(u => stepUnit(u, dt));
   separate();
@@ -1115,6 +1119,7 @@ function fleeBattle() { if (!B || B.over) return; B.over = true; const w = B.wav
   cleanupBattle(); toast(`Você recuou da Onda ${w}`); }
 function cleanupBattle() {
   if (!B) return;
+  if (B.intro) endIntro(); (B.extraShips || []).forEach(sh => scene.remove(sh));
   B.units.forEach(u => { scene.remove(u.o); dropBar(u.bar); }); clearDmg();
   if (B.walls) Object.values(B.walls).forEach(w => dropBar(w.bar));
   if (B.oldD) cam.d = B.oldD; document.body.classList.remove('cine'); $('#cine').hidden = true;
@@ -1841,6 +1846,155 @@ function armorHTML() {
     ${l >= 10 ? '<p class="ok">Armaduras no máximo!</p>' : `${costHTML(c)}<div class="actions"><button class="btn" data-a="armor" ${canAfford(c) ? '' : 'disabled'}>Forjar nível ${l + 1}</button></div>`}</div>`;
 }
 
+/* ---------- drakkar viking feito no código ---------- */
+function hullGeo(L, W, D) {
+  const N = 28, M = 14, pos = [], col = [], idx = [];
+  const c1 = new THREE.Color('#7a4e2a'), c2 = new THREE.Color('#5e3a1e'), c3 = new THREE.Color('#3f2611');
+  for (let i = 0; i <= N; i++) {
+    const t = i / N * 2 - 1, at = Math.abs(t);
+    const w = W * Math.pow(Math.max(0, 1 - t * t), .55) + .015, top = .18 + .55 * Math.pow(at, 4), d = D * (1 - Math.pow(at, 3)) + .04;
+    for (let j = 0; j <= M; j++) {
+      const a = j / M * Math.PI; pos.push(t * L / 2, top - Math.sin(a) * d, -Math.cos(a) * w);
+      const band = Math.floor(Math.sin(a) * 6.99), c = band === 0 ? c3 : band % 2 ? c1 : c2; col.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) { const a = i * (M + 1) + j, b = a + M + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+  const g = new THREE.BufferGeometry(); g.setIndex(idx); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.computeVertexNormals(); return g;
+}
+function dragonHead(color, eyeCol) {
+  const g = new THREE.Group(), m = new THREE.MeshStandardMaterial({ color, roughness: .7 });
+  const neck = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(.25, .45, 0), new THREE.Vector3(.3, .95, 0), new THREE.Vector3(.5, 1.2, 0)]), 16, .08, 7), m); g.add(neck);
+  const head = new THREE.Group(); head.position.set(.55, 1.22, 0); g.add(head);
+  const skull = new THREE.Mesh(new THREE.BoxGeometry(.38, .17, .16), m); skull.position.x = .12; head.add(skull);
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(.08, .22, 6), m); snout.rotation.z = -Math.PI / 2; snout.position.set(.38, -.01, 0); head.add(snout);
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(.32, .05, .12), m); jaw.position.set(.18, -.12, 0); jaw.rotation.z = -.25; head.add(jaw);
+  [-1, 1].forEach(s => {
+    const horn = new THREE.Mesh(new THREE.ConeGeometry(.035, .28, 5), m); horn.position.set(-.05, .14, s * .05); horn.rotation.set(s * .3, 0, .9); head.add(horn);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(.03, 8, 6), new THREE.MeshBasicMaterial({ color: eyeCol })); eye.position.set(.2, .05, s * .085); head.add(eye);
+    for (let k = 0; k < 3; k++) { const fin = new THREE.Mesh(new THREE.ConeGeometry(.03, .14, 4), m); fin.position.set(-.05 - k * .12, .05 - k * .25, 0); fin.rotation.z = 1.2; neck.add(fin); }
+  });
+  g.userData.jaw = jaw; return g;
+}
+function sailTex(enemy) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const c = cv.getContext('2d');
+  for (let i = 0; i < 8; i++) { c.fillStyle = enemy ? (i % 2 ? '#1d2422' : '#4d6a5c') : (i % 2 ? '#efe4cc' : '#a8322b'); c.fillRect(i * 16, 0, 16, 128); }
+  if (enemy) { // corvo/caveira pintado
+    c.fillStyle = 'rgba(190,255,210,.85)'; c.beginPath(); c.arc(64, 54, 22, 0, TAU); c.fill(); c.fillRect(48, 66, 32, 18);
+    c.fillStyle = '#1d2422'; c.beginPath(); c.arc(55, 52, 6, 0, TAU); c.arc(73, 52, 6, 0, TAU); c.fill(); c.fillRect(54, 72, 4, 10); c.fillRect(62, 72, 4, 10); c.fillRect(70, 72, 4, 10);
+  } else { c.strokeStyle = '#d9a441'; c.lineWidth = 6; c.beginPath(); c.moveTo(64, 30); c.lineTo(64, 98); c.moveTo(64, 46); c.lineTo(82, 30); c.moveTo(64, 46); c.lineTo(46, 30); c.stroke(); }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function buildDrakkar(enemy, crew) {
+  const g = new THREE.Group(), L = 5.2, W = .62, D = .55;
+  const hull = new THREE.Mesh(hullGeo(L, W, D), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .8, side: THREE.DoubleSide, color: enemy ? '#8a8f86' : '#ffffff' })); g.add(hull);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(L * .78, .05, W * 1.5), new THREE.MeshStandardMaterial({ color: enemy ? '#3e3a33' : '#6b4527', roughness: .9 })); deck.position.y = -.08; g.add(deck);
+  const wood = enemy ? '#3b3a36' : '#5c3d22', eye = enemy ? '#7dff9a' : '#ffcc55';
+  const bow = dragonHead(wood, eye); bow.position.set(L / 2 - .2, .55, 0); g.add(bow);
+  const tail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(-.2, .5, 0), new THREE.Vector3(-.15, .95, 0), new THREE.Vector3(.1, 1.05, 0), new THREE.Vector3(.15, .85, 0)]), 16, .06, 6), new THREE.MeshStandardMaterial({ color: wood })); tail.position.set(-L / 2 + .2, .55, 0); g.add(tail);
+  // mastro, verga e vela
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(.05, .07, 3.2, 8), new THREE.MeshStandardMaterial({ color: wood })); mast.position.y = 1.5; g.add(mast);
+  const yard = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, 2.6, 6), mast.material); yard.rotation.x = Math.PI / 2; yard.position.y = 2.75; g.add(yard);
+  const sg = new THREE.PlaneGeometry(2.4, 1.8, 12, 8); const sail = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ map: sailTex(enemy), side: THREE.DoubleSide, roughness: .9, transparent: !!enemy, opacity: enemy ? .93 : 1 }));
+  sail.rotation.y = Math.PI / 2; sail.position.set(.05, 1.85, 0); g.add(sail); sail.userData.base = sg.attributes.position.array.slice();
+  // escudos na amurada
+  const shM = enemy ? [new THREE.MeshStandardMaterial({ color: '#6d7a70' }), new THREE.MeshStandardMaterial({ color: '#2d3330' })] : [new THREE.MeshStandardMaterial({ color: '#d9a441' }), new THREE.MeshStandardMaterial({ color: '#a8322b' })];
+  const boss = new THREE.MeshStandardMaterial({ color: '#9aa3a8', metalness: .6, roughness: .4 });
+  for (let i = -6; i <= 6; i++) [-1, 1].forEach((s, k) => {
+    const x = i * .3, t = x / (L / 2), w = W * Math.pow(Math.max(0, 1 - t * t), .55) + .02, y = .18 + .55 * Math.pow(Math.abs(t), 4);
+    const sh = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, .025, 12), shM[(i + k + 12) % 2]); sh.rotation.x = Math.PI / 2; sh.position.set(x, y + .02, s * (w + .015)); g.add(sh);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(.035, 6, 4), boss); b.position.set(x, y + .02, s * (w + .03)); g.add(b);
+  });
+  // remos
+  const oars = [], oarM = new THREE.MeshStandardMaterial({ color: '#8a6038' });
+  for (let i = -4; i <= 4; i++) [-1, 1].forEach(s => {
+    const piv = new THREE.Group(), x = i * .42 + .15, t = x / (L / 2), w = W * Math.pow(Math.max(0, 1 - t * t), .55);
+    piv.position.set(x, .12, s * w); const oar = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, 1.6, 5), oarM); oar.rotation.x = s * (Math.PI / 2 + .55); oar.position.set(0, -.35, s * .65); piv.add(oar);
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(.09, .3, .02), oarM); blade.position.set(0, -.72, s * 1.28); blade.rotation.x = oar.rotation.x; piv.add(blade);
+    g.add(piv); oars.push({ piv, s, ph: i * .15 });
+  });
+  // tripulação draugr
+  const crewList = [];
+  if (crew && G.Skeleton_Warrior) {
+    [['Skeleton_Warrior', 1.7, 0, 'Skeleton_Axe', 'Skeleton_Shield_Small_A'], ['Skeleton_Minion', .9, .25, 'Skeleton_Blade'], ['Skeleton_Rogue', .3, -.25, 'Skeleton_Blade'], ['Skeleton_Minion', -.4, .25, null], ['Skeleton_Mage', -1.1, -.2, 'Skeleton_Staff']].forEach(([m, x, z, wr, wl], k) => {
+      const c = mkChar(m, k === 0 ? .36 : .3, wr, wl); c.o.position.set(x, -.06, z); c.o.rotation.y = Math.PI / 2; c.act.idle.time = k * .3; g.add(c.o); crewList.push(c);
+      c.o.traverse(n => { if (n.isMesh && /Eyes/.test(n.name)) { n.material = n.material.clone(); n.material.emissive = new THREE.Color('#5dff8a'); n.material.emissiveIntensity = 2; } });
+    });
+  }
+  // lanterna fantasma
+  if (enemy) { const lamp = new THREE.PointLight('#5dff8a', 2.5, 4); lamp.position.set(L / 2 - .5, 1.2, 0); g.add(lamp); g.userData.lamp = lamp; }
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  g.userData.update = (t, dt, rowing = true) => {
+    oars.forEach(o => { const p = t * 4.2 + o.ph; o.piv.rotation.y = rowing ? Math.sin(p) * .45 * o.s : 0; o.piv.rotation.x = rowing ? Math.max(0, Math.cos(p)) * .22 * o.s : 0; });
+    const a = sail.geometry.attributes.position, b = sail.userData.base;
+    for (let i = 0; i < a.count; i++) { const x = b[i * 3], y = b[i * 3 + 1]; a.array[i * 3 + 2] = (1 - Math.pow(x / 1.2, 2)) * (.22 + Math.sin(t * 2 + y * 2) * .04) * (1 - (y + .9) / 3.6); }
+    a.needsUpdate = true; crewList.forEach(c => c.mixer.update(dt)); if (bow.userData.jaw) bow.userData.jaw.rotation.z = -.25 - Math.max(0, Math.sin(t * 1.3)) * .25;
+    if (g.userData.lamp) g.userData.lamp.intensity = 2 + Math.sin(t * 7) * .6;
+  };
+  g.userData.crew = crewList; g.userData.L = L;
+  return g;
+}
+
+/* ---------- filme de abertura da batalha ---------- */
+let waveSea = null;
+function mkWaveSea() {
+  const geo = new THREE.PlaneGeometry(90, 90, 70, 70); geo.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: '#2f6f84', roughness: .25, metalness: .1, flatShading: true }));
+  m.position.set(0, -.05, 62); m.receiveShadow = true; m.userData.base = geo.attributes.position.array.slice(); return m;
+}
+function stepWaveSea(t) {
+  const a = waveSea.geometry.attributes.position, b = waveSea.userData.base;
+  for (let i = 0; i < a.count; i++) { const x = b[i * 3], z = b[i * 3 + 2]; a.array[i * 3 + 1] = Math.sin(x * .45 + t * 1.6) * .12 + Math.sin(z * .6 + t * 1.1) * .1 + Math.sin((x + z) * 1.3 + t * 2.4) * .04; }
+  a.needsUpdate = true; waveSea.geometry.computeVertexNormals();
+}
+const INTRO_D = 11;
+function startIntro() {
+  const I = B.intro = { t: 0, ships: [B.ship].concat(B.extraShips || []), cap: -1, fog0: [scene.fog.color.clone(), scene.fog.near, scene.fog.far, scene.background.clone()], flash: 0, horn: false, said: false };
+  waveSea = mkWaveSea(); scene.add(waveSea);
+  scene.fog.color.set('#4d6470'); scene.background.set('#4d6470'); scene.fog.near = 4; scene.fog.far = 20;
+  // o Jarl na praia olhando o mar
+  const [hx] = hexPos(7, 5); I.jarl = mkChar('Barbarian', .38, 'axe_2handed'); addFace(I.jarl); setFace(I.jarl, 'angry'); I.jarl.o.position.set(-2.4, 0, 7.1); I.jarl.o.rotation.y = 0; scene.add(I.jarl.o);
+  document.body.classList.add('cine'); $('#cine').hidden = false; $('#cineSkip').hidden = false; $('#cineCap').classList.remove('show');
+}
+const INTRO_CAPS = [[.4, 'Na névoa do fiorde…'], [3.3, 'Os draugr remam para a guerra'], [5.7, ''], [7.9, '']];
+function stepIntro(dt) {
+  const I = B.intro; I.t += dt; const t = I.t, k = t / INTRO_D;
+  // navios avançam de longe até a posição de ataque
+  I.ships.forEach((s, i) => { s.position.z = 92 - (92 - 34) * k + (s.userData.dz || 0); s.position.y = -.05 + Math.sin(t * 1.4 + i) * .07; s.rotation.z = Math.sin(t * 1.1 + i) * .04; s.rotation.x = Math.sin(t * .9 + i) * .02; s.userData.update(t, dt); });
+  if (waveSea.visible) stepWaveSea(t);
+  const P = B.ship.position;
+  // névoa abre aos poucos
+  scene.fog.far = 20 + Math.min(1, t / 7) * 50;
+  // legendas
+  const ci = INTRO_CAPS.filter(c => t >= c[0]).length - 1;
+  if (ci !== I.cap) { I.cap = ci; const txt = ci === 2 ? (B.wave % 10 === 0 ? 'O Rei Draugr lidera a frota!' : 'Eles vêm pela vila!') : ci === 3 ? `Onda ${B.wave} · Às armas, Jarl!` : INTRO_CAPS[ci][1]; $('#cineCap').textContent = txt; $('#cineCap').classList.remove('show'); void $('#cineCap').offsetWidth; if (txt) $('#cineCap').classList.add('show'); }
+  // relâmpagos
+  if (Math.random() < dt * .35 && t < 7.5) { I.flash = .25; setTimeout(() => Snd.noise(1.2, .35, 120), 300); }
+  if (I.flash > 0) { I.flash -= dt; scene.background.set(I.flash > .12 ? '#c8d8e0' : '#4d6470'); } else if (t < 7.8) scene.background.set('#4d6470');
+  // respingos dos remos
+  if (Math.random() < dt * 8 && t < 7.8) burstAt(P.x + (Math.random() < .5 ? -1 : 1) * 1.4, -.05, P.z + (Math.random() - .5) * 3, '#d8f0f6', 5, .03);
+  // câmera em 4 planos
+  let cp, cl;
+  if (t < 3.2) { const u = t / 3.2; cp = [P.x + 5 - u * 1.5, .9 + u * .4, P.z - 13 + u * 2]; cl = [P.x, .9, P.z]; }
+  else if (t < 5.6) { const u = (t - 3.2) / 2.4; cp = [P.x + 2.6, .75, P.z + 1.4 - u * 2.8]; cl = [P.x + .2, .35, P.z - .8 - u * 1.2]; }
+  else if (t < 7.8) { const u = (t - 5.6) / 2.2; scene.fog.far = 45; cp = [P.x + 1.5 - u * .4, .45, P.z - 4 + u * .9]; cl = [P.x, 1.05, P.z - 1.6]; if (!I.horn) { I.horn = true; Snd.horn(); const cap = B.ship.userData.crew[0]; if (cap) anim(cap, 'atk', 1); } }
+  else {
+    if (!I.beach) { I.beach = true; const [fc, fn, ff, bg] = I.fog0; scene.fog.color.copy(fc); scene.background.copy(bg); scene.fog.near = fn; scene.fog.far = ff; if (waveSea) waveSea.visible = false; setFace(I.jarl, 'shout'); anim(I.jarl, 'shoot', 1.2); if (!I.said) { I.said = true; say(B.wave % 10 === 0 ? 'O Rei Draugr vem com a frota! Às armas!' : 'Às armas! Defendam a vila!'); } }
+    const u = (t - 7.8) / (INTRO_D - 7.8); cp = [-2.15, 1.2 + u * .25, 5.5 - u * .5]; cl = [-2.6, .3, 16];
+    scene.fog.far = Math.max(scene.fog.far, 95);
+  }
+  I.jarl.mixer.update(dt); stepFace(I.jarl, dt);
+  camera.position.set(...cp); camera.lookAt(...cl);
+  if (t >= INTRO_D) endIntro();
+}
+function endIntro() {
+  const I = B.intro; if (!I) return; B.intro = null;
+  const [fc, fn, ff, bg] = I.fog0; scene.fog.color.copy(fc); scene.fog.near = fn; scene.fog.far = ff; scene.background.copy(bg);
+  if (waveSea) { scene.remove(waveSea); waveSea = null; } scene.remove(I.jarl.o);
+  I.ships.forEach(s => { s.position.z = 34 + (s.userData.dz || 0); s.rotation.x = 0; });
+  document.body.classList.remove('cine'); $('#cine').hidden = true; $('#cineCap').classList.remove('show');
+  placeCamera();
+}
+
 /* ---------- laço de render ---------- */
 let lastT = performance.now();
 function frame(now) {
@@ -1851,7 +2005,7 @@ function frame(now) {
   if (CINE) stepCine(ds); else { stepHerd(ds); stepCrews(ds, wall); stepWild(ds); stepHunters(ds, wall); stepArrows(ds); }
   if (B) stepBattle(ds); else stepFolk(dt);
   guards.forEach(g => g.mixer.update(dt / 1000));
-  if (ship) { ship.position.y = -.15 + Math.sin(now / 900) * .05; ship.rotation.z = Math.sin(now / 1300) * .03; }
+  if (ship) { ship.position.y = -.05 + Math.sin(now / 900) * .05; ship.rotation.z = Math.sin(now / 1300) * .03; ship.userData.update(now / 1000, dt / 1000, false); }
   clouds.forEach(c => { c.position.x += dt * .0006; if (c.position.x > 40) c.position.x = -40; });
   if (!reduceMotion && (smokeT -= dt) < 0) { smokeT = 420; spawnSmoke(); }
   for (let i = smokes.length - 1; i >= 0; i--) { const s = smokes[i]; s.life -= dt / 3000; s.m.position.y += dt * .0007; s.m.position.x += dt * .0003; s.m.scale.setScalar(.4 + (1 - s.life) * 1.1); s.m.material.opacity = s.life * .55; if (s.life <= 0) { scene.remove(s.m); s.m.material.dispose(); smokes.splice(i, 1); } }
@@ -2065,6 +2219,7 @@ ${(window.VS_CLOUD || {}).google ? `      <button class="btn google" data-p="goo
       <div class="setrow"><span>Música</span><button class="tg${S.music ? ' on' : ''}" data-p="set" data-k="music">${S.music ? 'Ligada' : 'Desligada'}</button></div>
       <div class="setrow"><span>Efeitos sonoros</span><button class="tg${S.sound ? ' on' : ''}" data-p="set" data-k="sound">${S.sound ? 'Ligados' : 'Desligados'}</button></div>
       <div class="setrow"><span>Narrador</span><button class="tg${S.voice ? ' on' : ''}" data-p="set" data-k="voice">${S.voice ? 'Ligado' : 'Desligado'}</button></div>
+      <div class="setrow"><span>Filme antes das batalhas</span><button class="tg${S.bintro !== false ? ' on' : ''}" data-p="set" data-k="bintro">${S.bintro !== false ? 'Ligado' : 'Desligado'}</button></div>
       <div class="setrow"><span>Gráficos</span><div class="seg">${[['auto', 'Auto'], ['alto', 'Alto'], ['leve', 'Leve']].map(([k, t]) => `<button class="${(S.gfx || 'auto') === k ? 'on' : ''}" data-p="gfx" data-k="${k}">${t}</button>`).join('')}</div></div>
       <div class="setrow"><span>Tutorial</span><button class="tg" data-p="tut">Ver de novo</button></div>
     </div>
@@ -2274,7 +2429,7 @@ sheet.addEventListener('click', e => {
   }
 });
 $('#btnGems').addEventListener('click', () => { Snd.init(); Snd.tap(); openTreasure(); });
-$('#cineSkip').addEventListener('click', () => { if (B && B.ending) finishEnding(); else skipCine(); });
+$('#cineSkip').addEventListener('click', () => { if (B && B.intro) endIntro(); else if (B && B.ending) finishEnding(); else skipCine(); });
 $('#btnCam').addEventListener('click', toggleFollow);
 
 /* etiquetas dos canteiros */
@@ -2479,7 +2634,7 @@ $('#tutOk').addEventListener('click', () => { Snd.collect(); endTut(); });
 addEventListener('resize', resize);
 resize(); renderHUD(); renderBuilders();
 loadAll().then(() => {
-  buildTerrain(); ship = buildShip();
+  buildTerrain(); { ship = buildDrakkar(false, false); const [x, z] = hexPos(9, 12); ship.position.set(x + .3, -.05, z); ship.rotation.y = .35; ship.scale.setScalar(.7); scene.add(ship); }
   for (let i = 0; i < 6; i++) { const c = model(i % 2 ? 'cloud_small' : 'cloud_big', 2.2); c.traverse(m => { if (m.isMesh) m.castShadow = false; }); c.position.set(-35 + i * 13, 15 + (i % 3), -26 + (i % 2) * 6); scene.add(c); clouds.push(c); }
   buildFolk(); buildTags(); refreshDecor(); refreshGuards(); buildWorkSpots(); buildFieldTags(); initGfx();
   loadRest().then(() => { refreshHerd(); refreshPiles(); buildWild(); });
@@ -2495,7 +2650,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 14;
+const GAME_VERSION = 15;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
