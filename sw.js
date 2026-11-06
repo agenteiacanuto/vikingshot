@@ -1,5 +1,5 @@
 // VikingShot: cache para jogar offline. Mude VERSION a cada atualização.
-const VERSION = 'vikingshot-v9';
+const VERSION = 'vikingshot-v10';
 const SHELL = ['./', 'index.html', 'app.js', 'config.js', 'lib/supabase.js', 'lib/three.module.min.js', 'lib/addons/loaders/GLTFLoader.js', 'lib/addons/utils/SkeletonUtils.js', 'lib/addons/utils/BufferGeometryUtils.js', 'manifest.webmanifest', 'icons/icon-192.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
