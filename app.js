@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 
 const $ = s => document.querySelector(s);
 const TAU = Math.PI * 2;
@@ -222,6 +223,11 @@ try { S = JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { S = nu
 if (!S || S.v !== 1) S = fresh();
 PLOTS.forEach(p => { if (!S.b[p.id]) S.b[p.id] = { lvl: 0, buf: 0, end: 0, to: 0 }; });
 if (!S.army) S.army = { war: 0, arc: 0, hus: 0 };
+if (S.music === undefined) S.music = true;
+if (S.voice === undefined) S.voice = true;
+if (!S.gfx) S.gfx = 'auto';
+if (!S.daily) S.daily = {};
+if (S.tut === undefined) S.tut = (S.mission > 3 || (S.b && S.b.salao && S.b.salao.lvl > 2)) ? 99 : 0;
 if (!S.gems) S.gems = { ouro: 0, rubi: 0, diamante: 0 };
 TREAS.forEach(k => { if (S.gems[k] === undefined) S.gems[k] = 0; });
 if (!S.pantry) S.pantry = { leite: 0, ovos: 0, frutas: 0, legumes: 0, verduras: 0 };
@@ -247,7 +253,7 @@ const save = () => { if (leaving) return; try { localStorage.setItem(SKEY, JSON.
 /* ========== Som ========== */
 const Snd = {
   ctx: null,
-  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); },
+  init() { if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().then(() => typeof Music !== 'undefined' && Music.start(B ? 'batalha' : 'vila')); else if (this.ctx && typeof Music !== 'undefined' && !Music.timer && S.music) Music.start(B ? 'batalha' : 'vila'); },
   tone(f, d, o = {}) {
     if (!S.sound || !this.ctx || this.ctx.state !== 'running') return;
     const { type = 'triangle', v = .12, delay = 0, to = null } = o, c = this.ctx, t = c.currentTime + delay;
@@ -294,7 +300,7 @@ const MEAL_FOOD = 20; // sem despensa, cada refeição sai por 20 de comida
 const mealsHave = () => PANTRY.reduce((a, k) => a + Math.floor(S.pantry[k] || 0), 0);
 const varietyOk = () => PANTRY.filter(k => (S.pantry[k] || 0) >= 1).length >= 3;
 function expYield(k, n, s, fed) {
-  const min = s / 60, f = n * (fed ? 1.25 : 1), e = EXP[k]; // base por viagem + por minuto
+  const min = s / 60, f = n * (fed ? 1.25 : 1) * (isWeekend() ? 1.5 : 1), e = EXP[k]; // base por viagem + por minuto (+50% no fim de semana)
   if (k === 'lenha') return { wood: Math.round(f * (18 + min * e.rate) * Math.pow(1.25, S.b.serraria.lvl - 1)) };
   if (k === 'caca') { const h = Math.pow(1.2, Math.max(0, S.b.cabana.lvl - 1)) * (1 + relic('hunt')); return { carne: Math.max(1, Math.round(f * (3 + min * e.rate) * h)), couro: Math.max(1, Math.round(f * (1 + min * .8) * h)) }; }
   const out = { stone: Math.round(f * (14 + min * e.rate) * Math.pow(1.25, Math.max(0, S.b.pedreira.lvl - 1))) };
@@ -375,7 +381,7 @@ function upgrade(p) {
   if (busyBuilders().length >= 2) { toast('Os dois construtores estão ocupados'); Snd.no(); return; }
   if (!canAfford(c)) { toast('Faltam recursos'); Snd.no(); return; }
   spend(c);
-  b.end = Date.now() + timeFor(p.type, L) * 1000; b.to = L;
+  b.end = Date.now() + timeFor(p.type, L) * 1000; b.to = L; dcount('obras');
   Snd.build(); burst(p, '#e8c27a', 14); save(); dirty = true; closeSheet();
 }
 function speedCost(p) { const left = (S.b[p.id].end - Date.now()) / 1000; return left <= 30 ? 0 : Math.ceil(left / 60); }
@@ -387,7 +393,7 @@ function collect(p, silent) {
   const b = S.b[p.id], d = DEF[p.type]; if (!d.prod || b.buf < 1) return 0;
   const room = capFor(d.prod) - S.res[d.prod]; const take = Math.floor(Math.min(b.buf, room));
   if (take <= 0) { if (!silent) { toast(`${RES_NAME[d.prod]} no limite: melhore o Armazém`); Snd.no(); } return 0; }
-  b.buf -= take; S.res[d.prod] += take; S.stats[d.prod] = (S.stats[d.prod] || 0) + take;
+  dcount('coletar'); b.buf -= take; S.res[d.prod] += take; S.stats[d.prod] = (S.stats[d.prod] || 0) + take;
   floatIcon(p, d.prod, '+' + fmt(take)); if (!silent) Snd.collect();
   dirty = true; save(); return take;
 }
@@ -403,7 +409,7 @@ function train(type, n) {
   const c = {}; for (const k in t.cost) c[k] = t.cost[k] * n;
   if (!canAfford(c)) { toast('Faltam recursos'); Snd.no(); return; }
   spend(c);
-  if (S.train) S.train.left += n; else S.train = { type, left: n, per: t.time, next: Date.now() + t.time * 1000 };
+  dcount('treinar', n); if (S.train) S.train.left += n; else S.train = { type, left: n, per: t.time, next: Date.now() + t.time * 1000 };
   Snd.build(); save(); dirty = true; renderSheet();
 }
 function speedTrain() {
@@ -473,8 +479,8 @@ function resize() {
 
 /* ---------- carregamento ---------- */
 const manager = new THREE.LoadingManager();
-manager.onProgress = (url, done, total) => { $('#loadBar').style.width = Math.round(done / total * 100) + '%'; };
-const loader = new GLTFLoader(manager);
+manager.onProgress = (url, done, total) => { const b = $('#loadBar'); if (b) b.style.width = Math.round(done / total * 100) + '%'; };
+const loader = new GLTFLoader(manager); loader.setMeshoptDecoder(MeshoptDecoder);
 const G = {};
 const ENV = `hex_grass hex_water hex_coast_A hex_coast_B hex_coast_C hex_coast_D mountain_A mountain_B mountain_C mountain_A_grass_trees mountain_B_grass_trees
 hills_A_trees hills_B_trees hill_single_A trees_A_large trees_A_medium trees_A_small trees_B_large trees_B_medium tree_single_A tree_single_B
@@ -486,12 +492,20 @@ wall_straight wall_straight_gate axe_1handed axe_2handed sword_1handed shield_ro
 const CHARS = ['Barbarian', 'Rogue', 'Ranger', 'Knight', 'Rogue_Hooded', 'Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage'];
 const CHAR_GLTF = ['Skeleton_Axe', 'Skeleton_Blade', 'Skeleton_Shield_Small_A', 'Skeleton_Staff'];
 const ANIMS = ['Rig_Medium_MovementBasic', 'Rig_Medium_General'];
+// primeiro o essencial da vila; draugr, animais e plantas carregam depois, sem travar a abertura
+const CORE_CHARS = ['Barbarian', 'Rogue', 'Ranger', 'Knight', 'Rogue_Hooded'];
+let restReady = false, restPromise = null;
 function loadAll() {
   const jobs = ENV.map(n => loader.loadAsync(`models/env/${n}.gltf`).then(g => { G[n] = g; }))
-    .concat(CHARS.concat(ANIMS).map(n => loader.loadAsync(`models/chars/${n}.glb`).then(g => { G[n] = g; })))
-    .concat(CHAR_GLTF.map(n => loader.loadAsync(`models/chars/${n}.gltf`).then(g => { G[n] = g; })))
-    .concat(lifeModels().map(([k, u]) => loader.loadAsync(u).then(g => { G[k] = g; })));
+    .concat(CORE_CHARS.concat(ANIMS).map(n => loader.loadAsync(`models/chars/${n}.glb`).then(g => { G[n] = g; })));
   return Promise.all(jobs);
+}
+function loadRest() {
+  if (restPromise) return restPromise;
+  const lim = 6, list = CHARS.filter(n => !CORE_CHARS.includes(n)).map(n => [n, `models/chars/${n}.glb`]).concat(CHAR_GLTF.map(n => [n, `models/chars/${n}.gltf`]), lifeModels());
+  let i = 0; const worker = () => i < list.length ? (([k, u]) => loader.loadAsync(u).then(g => { G[k] = g; }).catch(e => console.warn(u, e)).then(worker))(list[i++]) : Promise.resolve();
+  restPromise = Promise.all(Array.from({ length: lim }, worker)).then(() => { restReady = true; Object.values(plotGroups).forEach(g => g.userData.sig = null); });
+  return restPromise;
 }
 function shadowize(o, cast = true) { o.traverse(m => { if (m.isMesh) { m.castShadow = cast; m.receiveShadow = true; } }); return o; }
 const model = (n, s = 1) => { const o = shadowize(G[n].scene.clone(true)); o.scale.setScalar(s); return o; };
@@ -557,8 +571,9 @@ function refreshPlot(p) {
   }
   if (ruined) { put(g, 'building_destroyed'); return; }
   switch (p.type) {
-    case 'horta': { put(g, 'building_dirt'); const C = CROPS.alface, C2 = CROPS.cenoura; CROP_SPOTS.slice(0, 5).forEach(([dx, dz], k) => { const o = cropModel(k % 2 ? C2 : C, 4); o.position.set(dx * .9, .1, dz * .9); g.add(o); }); if (tier >= 2) put(g, 'wheelbarrow', .75, .55, .8, .7); if (tier >= 3) put(g, 'sack', -.75, .55, 0, .8); break; }
+    case 'horta': { put(g, 'building_dirt'); if (!restReady) { g.userData.sig = null; break; } const C = CROPS.alface, C2 = CROPS.cenoura; CROP_SPOTS.slice(0, 5).forEach(([dx, dz], k) => { const o = cropModel(k % 2 ? C2 : C, 4); o.position.set(dx * .9, .1, dz * .9); g.add(o); }); if (tier >= 2) put(g, 'wheelbarrow', .75, .55, .8, .7); if (tier >= 3) put(g, 'sack', -.75, .55, 0, .8); break; }
     case 'curral': {
+      if (!restReady) { g.userData.sig = null; put(g, 'building_dirt'); break; }
       const R = 1.45, fs = R / 2.06;
       for (let k = 0; k < 6; k++) { if (k === 1) continue; const a = (30 + 60 * k) * Math.PI / 180, f = shadowize(G.Fence.scene.clone(true)); f.scale.set(fs, fs * .85, fs); f.position.set(Math.cos(a) * R * .866, 0, Math.sin(a) * R * .866); f.rotation.y = -a + Math.PI / 2; g.add(f); }
       put(g, 'barrel', -.5, -.55, 0, .7); put(g, 'sack', .55, -.6, .5, .8); if (tier >= 2) { const c = shadowize(G.Crate.scene.clone(true)); c.scale.setScalar(.3 / heightOf(c)); c.position.set(.1, 0, -.85); g.add(c); }
@@ -588,7 +603,7 @@ function refreshPlot(p) {
       }
       break;
     case 'fazenda': put(g, 'building_grain'); if (tier >= 2) put(g, 'building_windmill_red', .45, -.5, 0, .7); if (tier >= 3) { put(g, 'sack', -.6, .5); put(g, 'wheelbarrow', -.3, .7, .6); } break;
-    case 'serraria': put(g, 'building_lumbermill_red'); put(g, 'resource_lumber', -.6, .55, .3, .8); if (tier >= 2) { const w = shadowize(G.Wagon.scene.clone(true)); w.scale.setScalar(.42 / heightOf(w)); w.position.set(.75, 0, .45); w.rotation.y = 2.4; g.add(w); } break;
+    case 'serraria': put(g, 'building_lumbermill_red'); put(g, 'resource_lumber', -.6, .55, .3, .8); if (tier >= 2 && G.Wagon) { const w = shadowize(G.Wagon.scene.clone(true)); w.scale.setScalar(.42 / heightOf(w)); w.position.set(.75, 0, .45); w.rotation.y = 2.4; g.add(w); } break;
     case 'pedreira': put(g, 'hill_single_A', 0, -.2); put(g, 'resource_stone', .4, .5, 0, .9); if (tier >= 2) put(g, 'wheelbarrow', -.4, .6, 1); if (tier >= 3) put(g, 'resource_stone', -.5, -.1, 1, .8); break;
     case 'mina': put(g, 'building_mine_red'); if (tier >= 2) put(g, 'crate_A_big', .6, .55, .3, .7); break;
     case 'armazem': put(g, 'building_market_red'); put(g, 'barrel', -.6, .6, 0, .8); if (tier >= 2) put(g, 'crate_A_big', .55, .6, .2, .8); if (tier >= 3) put(g, 'sack', 0, .8); break;
@@ -636,7 +651,7 @@ function spawnSmoke() {
 const folk = [];
 function buildFolk() {
   const clips = {}; ANIMS.forEach(n => G[n].animations.forEach(a => clips[a.name] = a));
-  CHARS.concat(CHARS.slice(0, 2)).forEach((n, k) => {
+  CORE_CHARS.concat(CORE_CHARS.slice(0, 2)).forEach((n, k) => {
     const o = SkeletonUtils.clone(G[n].scene); shadowize(o); o.scale.setScalar(.3);
     const mixer = new THREE.AnimationMixer(o);
     const walk = mixer.clipAction(clips.Walking_A), idle = mixer.clipAction(clips.Idle_A);
@@ -846,7 +861,7 @@ function mkUnit(side, kind, x, z) {
 function activate(u, rise) {
   u.on = true; u.o.visible = true; if (u.face) setFace(u, 'angry');
   if (u.side === 'enemy' && B.walls) u.wside = ['s', 'e', 'w'].find(k => outsideOf(k, u.o.position.x, u.o.position.z)) || null;
-  if (u.kind === 'boss') { toast('O Rei Draugr chegou!'); setTimeout(() => bcut(() => [u.o.position.x, .4, u.o.position.z], 2.2, 'O Rei Draugr!', 0), 1500); }
+  if (u.kind === 'boss') { toast('O Rei Draugr chegou!'); say('O Rei Draugr chegou!'); setTimeout(() => bcut(() => [u.o.position.x, .4, u.o.position.z], 2.2, 'O Rei Draugr!', 0), 1500); }
   if (rise) { anim(u, 'rise'); u.busy = 1.3; burstAt(u.o.position.x, .2, u.o.position.z, '#6b5a44', 12, .03); }
 }
 function hurt(t, d) {
@@ -871,6 +886,7 @@ function die(u) {
 
 function startBattle() {
   if (B) return;
+  if (!restReady) { toast('Os draugr estão chegando… só um instante'); closeSheet(); loadRest().then(() => startBattle()); return; }
   if (S.wave > MAXWAVE) { toast('Todas as ondas foram vencidas!'); return; }
   Snd.init(); closeSheet();
   const w = S.wave;
@@ -918,7 +934,7 @@ function startBattle() {
   $('#bHint').hidden = false; setTimeout(() => { const h = $('#bHint'); if (h) h.hidden = true; }, 6000);
   folk.forEach(f => f.o.visible = false); guards.forEach(g => g.o.visible = false);
   B.follow = true; B.slow = 1; B.oldD = cam.d; cam.d = Math.min(cam.d, 20); cam.x = hx; cam.z = hz + 2.6; placeCamera(); $('#btnCam').classList.add('on');
-  Snd.horn();
+  Snd.horn(); Music.start('batalha'); say('Os draugr se aproximam! Defendam a vila!');
 }
 
 function chooseTarget(u) {
@@ -1078,8 +1094,8 @@ function endBattle(win) {
   if (win) {
     rew = waveReward(w);
     for (const k in rew) gain(k, rew[k]);
-    S.wave = w + 1; Snd.done();
-  } else Snd.lose();
+    S.wave = w + 1; Snd.done(); dcount('ondas'); say(w % 10 === 0 ? 'O Rei Draugr caiu! Skål!' : 'Vitória! Skål!');
+  } else { Snd.lose(); say('O Salão caiu… vamos nos reerguer.'); }
   save(); dirty = true;
   const lostN = lost.war + lost.arc + lost.hus;
   const lostTxt = lostN ? Object.entries(lost).filter(([, n]) => n).map(([k, n]) => `${n} ${(n > 1 ? TROOPS[k].pl : TROOPS[k].name).toLowerCase()}`).join(', ') : 'nenhuma tropa';
@@ -1106,7 +1122,7 @@ function cleanupBattle() {
   if (B.ship) scene.remove(B.ship); if (B.mark) scene.remove(B.mark);
   B = null;
   document.body.classList.remove('battle'); $('#bhud').hidden = true;
-  folk.forEach(f => f.o.visible = true); herdObjs.forEach(a => a.o.visible = true); refreshGuards(); dirty = true; placeCamera();
+  folk.forEach(f => f.o.visible = true); herdObjs.forEach(a => a.o.visible = true); refreshGuards(); dirty = true; placeCamera(); applyGfx(GFX.mode, true); Music.start('vila');
 }
 function openWave() {
   if (B) return; const w = S.wave;
@@ -1162,6 +1178,7 @@ function produceModel(C, h = .14) { const o = shadowize(G[C.m + '_Crop'].scene.c
 const CROP_SPOTS = [[-.42, -.32], [.42, -.32], [-.42, .34], [.42, .34], [0, 0], [0, -.62], [0, .64]];
 const fieldG = [];
 function refreshFields(now) {
+  if (!restReady) return;
   const open = fieldsOpen();
   FIELDS.forEach(([c, r], i) => {
     let g = fieldG[i]; if (!g) { g = fieldG[i] = new THREE.Group(); const [x, z] = hexPos(c, r); g.position.set(x, 0, z); scene.add(g); }
@@ -1839,7 +1856,7 @@ function frame(now) {
   if (!reduceMotion && (smokeT -= dt) < 0) { smokeT = 420; spawnSmoke(); }
   for (let i = smokes.length - 1; i >= 0; i--) { const s = smokes[i]; s.life -= dt / 3000; s.m.position.y += dt * .0007; s.m.position.x += dt * .0003; s.m.scale.setScalar(.4 + (1 - s.life) * 1.1); s.m.material.opacity = s.life * .55; if (s.life <= 0) { scene.remove(s.m); s.m.material.dispose(); smokes.splice(i, 1); } }
   for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt / 900; const a = s.pts.geometry.attributes.position; s.vel.forEach((v, k) => { a.array[k * 3] += v[0]; a.array[k * 3 + 1] += v[1]; a.array[k * 3 + 2] += v[2]; v[1] -= .004; }); a.needsUpdate = true; s.pts.material.opacity = s.life; if (s.life <= 0) { scene.remove(s.pts); sparks.splice(i, 1); } }
-  updateTags(); updateFieldTags();
+  updateTags(); updateFieldTags(); renderTut(); watchFps(ds);
   renderer.render(scene, camera);
 }
 
@@ -1894,6 +1911,9 @@ sheet.addEventListener('click', e => {
   if (a.dataset.a === 'tspeed') speedTrain();
   if (a.dataset.a === 'fight') { closeSheet(); startBattle(); }
   if (a.dataset.a === 'home') { closeSheet(); }
+  if (a.dataset.a === 'dq') claimDq(a.dataset.k);
+  if (a.dataset.a === 'chestopen') openChest();
+  if (a.dataset.a === 'chest') claimChest();
   if (a.dataset.a === 'claim') { claimMission(); openMissions(); }
 });
 function trainHTML() {
@@ -1912,7 +1932,7 @@ function trainHTML() {
 function openMissions() {
   sheetFor = null;
   const m = MISSIONS[S.mission];
-  openSheet(`<h2>Missões</h2><p class="sub">Complete para ganhar recursos e runas.</p>
+  openSheet(`<h2>Missões</h2>${dailyHTML()}<p class="sub" style="margin-top:12px">Missões da história</p>
     ${m ? `<div class="stat"><span>${m.t}</span><span>${m.ok() ? '✓' : ''}</span></div><div class="costs">${Object.entries(m.r).map(([k, v]) => `<div class="cost">${icoSVG(k)}${fmt(v)}</div>`).join('')}</div>
     <div class="actions"><button class="btn" data-a="claim" ${m.ok() ? '' : 'disabled'}>Resgatar</button><button class="btn ghost" data-a="close">Fechar</button></div>` : '<p class="desc">Todas as missões foram cumpridas. O fiorde está salvo, Jarl!</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>'}
     <div class="mlist">${MISSIONS.map((x, i) => { const dn = S.mdone.includes(x.t); return `<div class="mitem${dn ? ' done' : i === S.mission ? ' cur' : ''}">${dn ? '✓' : i + 1}. ${x.t}</div>`; }).join('')}</div>`);
@@ -2040,6 +2060,14 @@ ${(window.VS_CLOUD || {}).google ? `      <button class="btn google" data-p="goo
     <label class="fld"><span>Nome do Jarl</span><input id="pfJarl" maxlength="18" value="${esc(S.jarl || 'Jarl')}"></label>
     <label class="fld"><span>Nome da vila</span><input id="pfVila" maxlength="24" value="${esc(S.vila || 'Vila do Jarl')}"></label>
     ${acc}
+    <p class="sub" style="margin-top:12px">Ajustes</p>
+    <div class="sets">
+      <div class="setrow"><span>Música</span><button class="tg${S.music ? ' on' : ''}" data-p="set" data-k="music">${S.music ? 'Ligada' : 'Desligada'}</button></div>
+      <div class="setrow"><span>Efeitos sonoros</span><button class="tg${S.sound ? ' on' : ''}" data-p="set" data-k="sound">${S.sound ? 'Ligados' : 'Desligados'}</button></div>
+      <div class="setrow"><span>Narrador</span><button class="tg${S.voice ? ' on' : ''}" data-p="set" data-k="voice">${S.voice ? 'Ligado' : 'Desligado'}</button></div>
+      <div class="setrow"><span>Gráficos</span><div class="seg">${[['auto', 'Auto'], ['alto', 'Alto'], ['leve', 'Leve']].map(([k, t]) => `<button class="${(S.gfx || 'auto') === k ? 'on' : ''}" data-p="gfx" data-k="${k}">${t}</button>`).join('')}</div></div>
+      <div class="setrow"><span>Tutorial</span><button class="tg" data-p="tut">Ver de novo</button></div>
+    </div>
     ${isStandalone() ? '' : `<div class="actions"><button class="btn ghost" data-p="install">Instalar no celular</button></div>`}
     <div class="actions"><button class="btn" data-p="ok">Pronto</button></div>`);
 }
@@ -2056,6 +2084,9 @@ sheet.addEventListener('click', async e => {
   if (k === 'ok') { readNames(); closeSheet(); Cloud.push(true); }
   if (k === 'google') Cloud.google();
   if (k === 'install') installApp();
+  if (k === 'set') { const key = a.dataset.k; S[key] = !S[key]; save(); if (key === 'music') { if (S.music) { Snd.init(); Music.start(B ? 'batalha' : 'vila'); } else Music.stop(); } if (key === 'voice' && S.voice) say('Skål, Jarl!'); openProfile(); }
+  if (k === 'gfx') { S.gfx = a.dataset.k; save(); applyGfx(S.gfx === 'auto' ? (lowHint() ? 'leve' : 'alto') : S.gfx, true); toast('Gráficos: ' + a.textContent); openProfile(); }
+  if (k === 'tut') { S.tut = 0; save(); closeSheet(); }
   if (k === 'mail') { const addr = $('#pfMail').value.trim(); a.disabled = true; if (await Cloud.email(addr)) { openSheet(`<h2>Confira seu e-mail</h2><p class="desc">Mandamos um link para <b>${esc(addr)}</b>. Abra-o neste aparelho para entrar. Pode demorar um minuto; olhe também o spam.</p><div class="actions"><button class="btn" data-a="close">Ok</button></div>`); } else a.disabled = false; }
   if (k === 'sync') { await Cloud.push(true); openProfile(); }
   if (k === 'out') { await Cloud.logout(); openProfile(); }
@@ -2121,10 +2152,11 @@ function startExp(k) {
 }
 function finishExp(k) {
   const e = S.exp[k]; if (!e || Date.now() < e.end || CINE || B) return;
+  if (!restReady) { toast('Carregando… tente em um instante'); return; }
   for (const r in e.rew) gain(r, e.rew[r]);
   if (e.gems) for (const g in e.gems) { gain(g, e.gems[g]); if (g === 'trofeu') S.stats.trofeuFirst = 1; else S.stats.gemFound = (S.stats.gemFound || 0) + e.gems[g]; }
   const sk = { lenha: 'expLenha', mina: 'expMina', caca: 'expCaca' }[k]; S.stats[sk] = (S.stats[sk] || 0) + 1;
-  S.exp[k] = null; save(); dirty = true;
+  S.exp[k] = null; dcount('exp_' + k); save(); dirty = true;
   ({ lenha: cineLenha, mina: cineMina, caca: cineCaca })[k](e);
 }
 function expSpeedCost(k) { const e = S.exp[k]; return e ? Math.ceil(Math.max(0, e.end - Date.now()) / 60000) : 0; }
@@ -2177,9 +2209,9 @@ function plant(i, k, all) {
   Snd.build(); save(); dirty = true; closeSheet();
 }
 function harvest(i) {
-  const f = S.fields[i]; if (!f || Date.now() < f.end || CINE || B) return;
+  const f = S.fields[i]; if (!f || Date.now() < f.end || CINE || B || !restReady) return;
   const C = CROPS[f.c], q = cropYield(f.c), rew = { [C.cat]: q };
-  gain(C.cat, q); S.stats.harvest = (S.stats.harvest || 0) + 1; S.fields[i] = null; save(); dirty = true;
+  gain(C.cat, q); dcount('colher'); S.stats.harvest = (S.stats.harvest || 0) + 1; S.fields[i] = null; save(); dirty = true;
   cineHarvest(i, f, rew);
 }
 function hortaHTML() {
@@ -2196,7 +2228,7 @@ function hortaHTML() {
 function curralCollect() {
   const o = Math.floor(S.cur.ovos), l = Math.floor(S.cur.leite);
   if (o + l < 1 || CINE || B) { toast('Ainda não há leite nem ovos'); return; }
-  S.cur.ovos -= o; S.cur.leite -= l; gain('ovos', o); gain('leite', l); S.stats.curral = (S.stats.curral || 0) + 1; save(); dirty = true;
+  dcount('curral'); S.cur.ovos -= o; S.cur.leite -= l; gain('ovos', o); gain('leite', l); S.stats.curral = (S.stats.curral || 0) + 1; save(); dirty = true;
   cineCurral({ ovos: o, leite: l });
 }
 function curralHTML() {
@@ -2281,7 +2313,7 @@ function pickField(sx, sy) {
 /* ========== Laço do jogo ========== */
 function tick() {
   finished = []; trainedNow = 0; advance(Date.now());
-  refreshHerd(); refreshPiles();
+  refreshHerd(); refreshPiles(); stepTut(); $('#mission').classList.toggle('dot', chestReady() || dqClaimable());
   ['lenha', 'mina', 'caca'].forEach(k => { const e = S.exp[k]; if (e && Date.now() >= e.end && !e.told) { e.told = 1; Snd.done(); toast(`${EXP[k].name} terminaram! Toque no ✓ para ver`); save(); } });
   if (trainedNow) { dirty = true; refreshGuards(); if (sheetFor === 'quartel' && !sheet.hidden) renderSheet(); }
   finished.forEach(id => { const p = plotById(id); Snd.done(); burst(p, '#f3d27a', 24); toast(`${DEF[p.type].name} chegou ao nível ${S.b[id].lvl}!`); dirty = true; });
@@ -2292,8 +2324,156 @@ function tick() {
 }
 setInterval(() => { tick(); if (sheetFor && !sheet.hidden && S.b[sheetFor] && (S.b[sheetFor].end || (sheetFor === 'quartel' && S.train) || ((sheetFor === 'serraria' && S.exp.lenha) || (sheetFor === 'pedreira' && S.exp.mina)) || sheetFor === 'horta' || sheetFor === 'curral') && !sheet.contains(document.activeElement && document.activeElement.tagName === 'INPUT' ? document.activeElement : null)) renderSheet(); }, 1000);
 setInterval(() => { dirty = true; }, 5000);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); dirty = true; } else save(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); dirty = true; if (S.music && Snd.ctx) Music.start(B ? 'batalha' : 'vila'); } else { save(); Music.stop(); } });
 
+
+/* ========== Gráficos: modo leve automático ========== */
+const GFX = { mode: 'alto', fpsT: 0, fpsN: 0, fpsSum: 0, checked: false };
+const lowHint = () => (navigator.deviceMemory && navigator.deviceMemory <= 3) || (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4);
+function applyGfx(m, silent) {
+  GFX.mode = m; const low = m === 'leve';
+  renderer.setPixelRatio(low ? 1 : Math.min(devicePixelRatio || 1, 1.5)); resize();
+  sun.castShadow = !low; clouds.forEach(c => c.visible = !low);
+  folk.forEach((f, i) => f.o.visible = !low || i < 3);
+  if (!silent && low) toast('Modo leve ligado para o jogo rodar melhor');
+}
+function initGfx() { const pref = S.gfx || 'auto'; applyGfx(pref === 'auto' ? (lowHint() ? 'leve' : 'alto') : pref, true); }
+function watchFps(dt) { // nos primeiros segundos, se estiver lento, liga o modo leve sozinho
+  if (GFX.checked || (S.gfx || 'auto') !== 'auto' || B || CINE) return;
+  GFX.fpsT += dt; if (GFX.fpsT < 2) return; GFX.fpsN++; GFX.fpsSum += dt;
+  if (GFX.fpsT > 8) { GFX.checked = true; const avg = GFX.fpsSum / GFX.fpsN; if (avg > .045 && GFX.mode !== 'leve') applyGfx('leve'); }
+}
+
+/* ========== Música (gerada no jogo) e narrador ========== */
+const Music = {
+  out: null, mode: null, timer: null, nextT: 0, step: 0, drone: null, bpm: 84,
+  SC: [146.83, 164.81, 174.61, 220, 261.63, 293.66, 329.63, 349.23, 440], // ré menor viking
+  start(mode) {
+    if (!S.music || !Snd.ctx || Snd.ctx.state !== 'running') { this.mode = mode; return; }
+    if (this.mode === mode && this.timer) return;
+    this.stop(); this.mode = mode; const c = Snd.ctx;
+    this.out = c.createGain(); this.out.gain.value = 0; this.out.gain.linearRampToValueAtTime(mode === 'batalha' ? .32 : .22, c.currentTime + 2); this.out.connect(c.destination);
+    this.bpm = mode === 'batalha' ? 132 : 80; this.step = 0; this.nextT = c.currentTime + .1;
+    // bordão grave
+    const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = mode === 'batalha' ? 520 : 360; f.connect(this.out);
+    this.drone = [mode === 'batalha' ? 55 : 73.42, mode === 'batalha' ? 82.41 : 110].map(hz => { const o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.value = hz; g.gain.value = .09; o.connect(g); g.connect(f); o.start(); return o; });
+    this.timer = setInterval(() => this.tick(), 90);
+  },
+  stop() { if (this.timer) clearInterval(this.timer); this.timer = null; if (this.drone) { this.drone.forEach(o => { try { o.stop(); } catch (e) {} }); this.drone = null; } if (this.out) { const o = this.out; o.gain.linearRampToValueAtTime(0, Snd.ctx.currentTime + .4); setTimeout(() => o.disconnect(), 600); this.out = null; } },
+  drum(t, hz, v, d = .25) { const c = Snd.ctx, o = c.createOscillator(), g = c.createGain(); o.type = 'sine'; o.frequency.setValueAtTime(hz, t); o.frequency.exponentialRampToValueAtTime(hz * .45, t + d); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); g.connect(this.out); o.start(t); o.stop(t + d + .05); },
+  shaker(t, v) { const c = Snd.ctx, len = c.sampleRate * .05 | 0, b = c.createBuffer(1, len, c.sampleRate), ch = b.getChannelData(0); for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len); const s = c.createBufferSource(), hp = c.createBiquadFilter(), g = c.createGain(); hp.type = 'highpass'; hp.frequency.value = 5000; g.gain.value = v; s.buffer = b; s.connect(hp); hp.connect(g); g.connect(this.out); s.start(t); },
+  flute(t, hz, d, v = .09) { const c = Snd.ctx, o = c.createOscillator(), lfo = c.createOscillator(), lg = c.createGain(), g = c.createGain(); o.type = 'triangle'; o.frequency.value = hz; lfo.frequency.value = 5.2; lg.gain.value = hz * .012; lfo.connect(lg); lg.connect(o.frequency); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .06); g.gain.setValueAtTime(v, t + d * .7); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g); g.connect(this.out); o.start(t); lfo.start(t); o.stop(t + d + .05); lfo.stop(t + d + .05); },
+  horn(t, hz, d) { const c = Snd.ctx, o = c.createOscillator(), f = c.createBiquadFilter(), g = c.createGain(); o.type = 'sawtooth'; o.frequency.value = hz; f.type = 'lowpass'; f.frequency.setValueAtTime(300, t); f.frequency.linearRampToValueAtTime(1200, t + .25); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.08, t + .15); g.gain.setValueAtTime(.08, t + d * .8); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(f); f.connect(g); g.connect(this.out); o.start(t); o.stop(t + d + .05); },
+  phrase: [],
+  tick() {
+    if (!this.out) return; const c = Snd.ctx, spb = 60 / this.bpm / 4;
+    while (this.nextT < c.currentTime + .35) {
+      const s = this.step % 16, bar = Math.floor(this.step / 16), t = this.nextT, B = this.mode === 'batalha';
+      if (B) {
+        if (s % 4 === 0) this.drum(t, 70, .55); if (s === 6 || s === 14) this.drum(t, 120, .3, .18); if (s % 2 === 1) this.shaker(t, .05);
+        if (bar % 4 === 0 && s === 0) [0, 4, 8].forEach((k, i) => this.horn(t + k * spb, [73.42, 87.31, 110][i], spb * 4));
+      } else {
+        if (s === 0) this.drum(t, 60, .4, .4); if (s === 8) this.drum(t, 80, .22, .3); if (s === 11 && bar % 2) this.drum(t, 80, .14, .25);
+      }
+      if (s === 0 && bar % 2 === 0) { // frase nova a cada 2 compassos
+        this.phrase = []; let pos = 0, idx = 3 + Math.floor(Math.random() * 3);
+        while (pos < 32) { const len = [2, 2, 4, 4, 6][Math.floor(Math.random() * 5)]; idx = Math.max(0, Math.min(this.SC.length - 1, idx + [-2, -1, -1, 1, 1, 2, 0][Math.floor(Math.random() * 7)])); if (Math.random() < (B ? .25 : .35)) this.phrase.push(null); else this.phrase.push([pos, idx, len]); pos += len; }
+        this.phrase = this.phrase.filter(Boolean);
+      }
+      const ps = (bar % 2) * 16 + s; this.phrase.forEach(([p, i, len]) => { if (p === ps) this.flute(t, this.SC[i] * (B ? 1 : 2), len * spb, B ? .06 : .08); });
+      this.nextT += spb; this.step++;
+    }
+  }
+};
+function say(txt) {
+  if (!S.voice || !('speechSynthesis' in window)) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(txt); u.lang = 'pt-BR'; u.rate = 1; u.pitch = .7; const v = speechSynthesis.getVoices().find(v => /pt(-|_)BR/i.test(v.lang)); if (v) u.voice = v; speechSynthesis.speak(u); } catch (e) {}
+}
+
+/* ========== Baú diário, missões do dia e fim de semana ========== */
+const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const isWeekend = () => { const d = new Date().getDay(); return d === 0 || d === 6; };
+const CHEST = [{ runes: 5, food: 300 }, { runes: 8, wood: 400 }, { runes: 10, stone: 400 }, { runes: 12, iron: 200 }, { runes: 15, food: 600, wood: 600 }, { runes: 20, ouro: 1 }, { runes: 30, ouro: 3, rubi: 1 }];
+function chestReady() { return S.daily.last !== today(); }
+function openChest() {
+  sheetFor = null; const day = S.daily.next || 1;
+  openSheet(`<h2>Baú diário</h2><p class="sub">Volte todo dia: no 7º dia seguido o baú é lendário</p>
+    <div class="chestrow">${CHEST.map((r, i) => `<div class="cd${i + 1 < day ? ' got' : i + 1 === day ? ' now' : ''}"><b>Dia ${i + 1}</b>${Object.entries(r).map(([k, v]) => `<span>${icoSVG(k)}${fmt(v)}</span>`).join('')}</div>`).join('')}</div>
+    ${chestReady() ? `<div class="chest"><div class="lid"></div><div class="box"></div></div><div class="actions"><button class="btn" data-a="chest">Abrir o baú do dia ${day}</button></div>` : `<p class="desc">Você já abriu o baú de hoje. Volte amanhã para o dia ${day}!</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`}`);
+}
+function claimChest() {
+  if (!chestReady()) return; const y = new Date(Date.now() - 864e5), yd = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+  let day = S.daily.last === yd ? (S.daily.next || 1) : 1; // perdeu um dia: volta ao 1
+  const r = CHEST[day - 1]; for (const k in r) gain(k, r[k]);
+  S.daily.last = today(); S.daily.next = day >= 7 ? 1 : day + 1; Snd.chime(); save(); dirty = true;
+  const el = sheet.querySelector('.chest'); if (el) el.classList.add('open');
+  setTimeout(() => openSheet(rewardCard(day === 7 ? 'Baú lendário!' : `Baú do dia ${day}`, 'Volte amanhã para o próximo', r)), 700);
+}
+const DQ_POOL = [
+  { k: 'coletar', n: 5, t: 'Colete recursos 5 vezes', r: { runes: 5 } },
+  { k: 'obras', n: 2, t: 'Comece 2 obras ou melhorias', r: { wood: 300 } },
+  { k: 'exp_lenha', n: 3, t: 'Mande os lenhadores 3 vezes', r: { food: 300 } },
+  { k: 'exp_mina', n: 2, t: 'Mande os mineiros 2 vezes', r: { runes: 8 }, need: () => S.b.pedreira.lvl },
+  { k: 'exp_caca', n: 2, t: 'Volte de 2 caçadas', r: { runes: 8 }, need: () => S.b.cabana.lvl },
+  { k: 'colher', n: 3, t: 'Colha 3 plantações', r: { stone: 300 }, need: () => S.b.horta.lvl },
+  { k: 'curral', n: 2, t: 'Recolha o curral 2 vezes', r: { food: 400 }, need: () => S.b.curral.lvl },
+  { k: 'ondas', n: 1, t: 'Vença uma onda de draugr', r: { runes: 10 }, need: () => S.b.quartel.lvl },
+  { k: 'treinar', n: 5, t: 'Treine 5 tropas', r: { iron: 150 }, need: () => S.b.quartel.lvl }
+];
+function dailyQuests() {
+  if (!S.dq || S.dq.day !== today()) {
+    const pool = DQ_POOL.filter(q => !q.need || q.need()); let seed = today().split('-').join('') % 9973;
+    const pick = []; while (pick.length < 3 && pool.length) { seed = (seed * 7919 + 13) % 9973; pick.push(pool.splice(seed % pool.length, 1)[0].k); }
+    S.dq = { day: today(), list: pick, cnt: {}, got: [], bonus: false };
+  }
+  return S.dq;
+}
+function dcount(k, n = 1) { const q = dailyQuests(); q.cnt[k] = (q.cnt[k] || 0) + n; dirty = true; }
+const dqDef = k => DQ_POOL.find(q => q.k === k);
+const dqDone = k => (dailyQuests().cnt[k] || 0) >= dqDef(k).n;
+function dqClaimable() { const q = dailyQuests(); return q.list.some(k => dqDone(k) && !q.got.includes(k)) || (!q.bonus && q.list.every(k => q.got.includes(k))); }
+function dailyHTML() {
+  const q = dailyQuests();
+  return `<p class="sub" style="margin-top:4px">Missões do dia${isWeekend() ? ' · <b class="ok">fim de semana: expedições +50%</b>' : ''}</p><div class="mlist">${q.list.map(k => { const d = dqDef(k), c = Math.min(d.n, q.cnt[k] || 0), got = q.got.includes(k);
+    return `<div class="mitem dq${got ? ' done' : ''}"><span>${d.t} <small>${c}/${d.n}</small></span>${got ? '✓' : dqDone(k) ? `<button class="btn sm" data-a="dq" data-k="${k}">Pegar</button>` : `<small>${Object.entries(d.r).map(([rk, v]) => `${icoSVG(rk)}${fmt(v)}`).join(' ')}</small>`}</div>`; }).join('')}
+    <div class="mitem dq${q.bonus ? ' done' : ''}"><span>Complete as 3 <small>bônus</small></span>${q.bonus ? '✓' : q.list.every(k => q.got.includes(k)) ? '<button class="btn sm" data-a="dq" data-k="bonus">Pegar</button>' : `<small>${icoSVG('runes')}15</small>`}</div></div>
+    <div class="mitem chestline" data-a="chestopen">${chestReady() ? '<b class="ok">Baú diário pronto para abrir!</b>' : `Baú diário · volta amanhã (dia ${S.daily.next || 1})`}</div>`;
+}
+function claimDq(k) {
+  const q = dailyQuests();
+  if (k === 'bonus') { if (q.bonus || !q.list.every(x => q.got.includes(x))) return; q.bonus = true; gain('runes', 15); }
+  else { if (!dqDone(k) || q.got.includes(k)) return; q.got.push(k); const r = dqDef(k).r; for (const x in r) gain(x, r[x]); }
+  Snd.done(); toast('Recompensa recebida!'); save(); dirty = true; openMissions();
+}
+
+/* ========== Tutorial guiado ========== */
+const TUT = [
+  { t: 'Eu sou o Jarl! Vamos erguer nossa vila. Toque na bolha de comida em cima da <b>Fazenda</b>.', plot: 'faz1', done: () => S.stats.food > 0 },
+  { t: 'Muito bem! Agora toque no <b>Salão do Jarl</b> e melhore para o nível 2.', plot: 'salao', done: () => S.b.salao.end || S.b.salao.lvl >= 2 },
+  { t: 'Enquanto a obra anda, toque na <b>Serraria</b> e envie um lenhador para a floresta.', plot: 'serraria', done: () => S.exp.lenha || S.stats.expLenha },
+  { t: 'Quando aparecer o <b>✓ verde</b> em cima da Serraria, toque nele para ver o corte.', plot: 'serraria', done: () => S.stats.expLenha >= 1 },
+  { t: 'Agora toque nas <b>Missões</b> aqui embaixo para pegar suas recompensas.', el: '#mission', done: () => S.mdone.length >= 2 },
+  { t: 'Siga as missões: construa o Quartel, treine guerreiros e toque em <b>Batalha</b> quando estiver pronto. Boa sorte, Jarl!', el: '#btnBattle', last: true }
+];
+function tutStep() { return S.tut < TUT.length ? TUT[S.tut] : null; }
+function renderTut() {
+  const st = tutStep(), box = $('#tut');
+  if (!st || B || CINE) { box.hidden = true; return; }
+  box.hidden = false;
+  if (box.dataset.i !== String(S.tut)) { box.dataset.i = S.tut; $('#tutTxt').innerHTML = st.t; $('#tutOk').hidden = !st.last; }
+  const ar = $('#tutArrow'); let x, y, ok = true;
+  if (st.el) { const r = $(st.el).getBoundingClientRect(); x = r.left + r.width / 2; y = r.top - 6; }
+  else { const p = plotById(st.plot), [px, pz] = hexPos(p.c, p.r); v3.set(px, (PLOT_H[p.type] || 1.5) + .9, pz).project(camera); x = (v3.x + 1) / 2 * innerWidth; y = (1 - v3.y) / 2 * innerHeight - 30; ok = v3.z < 1; }
+  ar.hidden = !ok || !sheet.hidden; ar.style.transform = `translate(${x}px,${y}px)`;
+}
+function stepTut() {
+  const st = tutStep(); if (!st || st.last) return;
+  if (st.done()) { S.tut++; Snd.collect(); save(); }
+}
+function endTut() { S.tut = 99; save(); $('#tut').hidden = true; }
+
+$('#tutSkip').addEventListener('click', () => { Snd.tap(); endTut(); });
+$('#tutOk').addEventListener('click', () => { Snd.collect(); endTut(); });
 
 /* ========== Início ========== */
 addEventListener('resize', resize);
@@ -2301,8 +2481,10 @@ resize(); renderHUD(); renderBuilders();
 loadAll().then(() => {
   buildTerrain(); ship = buildShip();
   for (let i = 0; i < 6; i++) { const c = model(i % 2 ? 'cloud_small' : 'cloud_big', 2.2); c.traverse(m => { if (m.isMesh) m.castShadow = false; }); c.position.set(-35 + i * 13, 15 + (i % 3), -26 + (i % 2) * 6); scene.add(c); clouds.push(c); }
-  buildFolk(); buildTags(); refreshDecor(); refreshGuards(); buildWorkSpots(); buildFieldTags(); refreshHerd(); refreshPiles(); buildWild();
+  buildFolk(); buildTags(); refreshDecor(); refreshGuards(); buildWorkSpots(); buildFieldTags(); initGfx();
+  loadRest().then(() => { refreshHerd(); refreshPiles(); buildWild(); });
   $('#loading').classList.add('done'); setTimeout(() => $('#loading').remove(), 600);
+  setTimeout(() => { if (!S.intro || S.tut < 4) return; if (chestReady()) openChest(); else if (isWeekend()) toast('Fim de semana viking: expedições rendem +50%!'); }, 1500);
   renderer.setAnimationLoop(frame);
   if (!S.intro) {
     openSheet(`<h2>Bem-vindo, Jarl!</h2><p class="sub">Sua vila no fiorde</p>
@@ -2313,7 +2495,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 13;
+const GAME_VERSION = 14;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -2336,4 +2518,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && !B && !CINE) { reloaded = true; save(); location.reload(); } });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); setInterval(() => r.update(), 5 * 60e3); }).catch(() => {}));
 }
-window.__vs = { camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
