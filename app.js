@@ -2040,6 +2040,7 @@ ${(window.VS_CLOUD || {}).google ? `      <button class="btn google" data-p="goo
     <label class="fld"><span>Nome do Jarl</span><input id="pfJarl" maxlength="18" value="${esc(S.jarl || 'Jarl')}"></label>
     <label class="fld"><span>Nome da vila</span><input id="pfVila" maxlength="24" value="${esc(S.vila || 'Vila do Jarl')}"></label>
     ${acc}
+    ${isStandalone() ? '' : `<div class="actions"><button class="btn ghost" data-p="install">Instalar no celular</button></div>`}
     <div class="actions"><button class="btn" data-p="ok">Pronto</button></div>`);
 }
 function readNames() {
@@ -2054,6 +2055,7 @@ sheet.addEventListener('click', async e => {
   const k = a.dataset.p; Snd.tap();
   if (k === 'ok') { readNames(); closeSheet(); Cloud.push(true); }
   if (k === 'google') Cloud.google();
+  if (k === 'install') installApp();
   if (k === 'mail') { const addr = $('#pfMail').value.trim(); a.disabled = true; if (await Cloud.email(addr)) { openSheet(`<h2>Confira seu e-mail</h2><p class="desc">Mandamos um link para <b>${esc(addr)}</b>. Abra-o neste aparelho para entrar. Pode demorar um minuto; olhe também o spam.</p><div class="actions"><button class="btn" data-a="close">Ok</button></div>`); } else a.disabled = false; }
   if (k === 'sync') { await Cloud.push(true); openProfile(); }
   if (k === 'out') { await Cloud.logout(); openProfile(); }
@@ -2306,11 +2308,28 @@ loadAll().then(() => {
     openSheet(`<h2>Bem-vindo, Jarl!</h2><p class="sub">Sua vila no fiorde</p>
       <p class="desc">Construa e melhore os prédios, colete recursos tocando nas bolhas acima deles e cumpra as missões. Arraste para mover a vila e use dois dedos para aproximar.</p>
       <p class="desc">Os draugr virão pelo mar e pela floresta. Construa o Quartel, treine tropas e toque em <b>Batalha</b> quando estiver pronto.</p>
+      ${isStandalone() ? '' : '<p class="desc" style="font-size:14px">Dica: toque em <b>Instalar</b> no topo da tela para ter o jogo como app no celular.</p>'}
       <div class="actions"><button class="btn" data-a="close">Começar</button></div>`);
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 12;
+const GAME_VERSION = 13;
+/* instalar como app */
+let installEvt = null;
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
+addEventListener('appinstalled', () => { installEvt = null; const b = $('#btnInstall'); if (b) b.hidden = true; toast('VikingShot instalado!'); });
+async function installApp() {
+  Snd.init(); Snd.tap();
+  if (isStandalone()) { toast('O jogo já está instalado'); return; }
+  if (installEvt) { installEvt.prompt(); const r = await installEvt.userChoice.catch(() => null); if (r && r.outcome === 'accepted') installEvt = null; return; }
+  sheetFor = null;
+  openSheet(isIOS()
+    ? `<h2>Instalar no iPhone</h2><ol class="steps"><li>Abra o jogo no <b>Safari</b>.</li><li>Toque no botão <b>Compartilhar</b> (o quadrado com a seta para cima).</li><li>Escolha <b>Adicionar à Tela de Início</b> e toque em <b>Adicionar</b>.</li></ol><p class="desc">O ícone do VikingShot aparece junto com seus apps e o jogo abre em tela cheia.</p><div class="actions"><button class="btn" data-a="close">Entendi</button></div>`
+    : `<h2>Instalar no celular</h2><ol class="steps"><li>Abra o jogo no <b>Chrome</b>.</li><li>Toque nos <b>três pontinhos ⋮</b> no canto de cima.</li><li>Escolha <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</li></ol><p class="desc">O ícone do VikingShot aparece junto com seus apps e o jogo abre em tela cheia, até sem internet.</p><div class="actions"><button class="btn" data-a="close">Entendi</button></div>`);
+}
+if (!isStandalone()) { const b = $('#btnInstall'); if (b) { b.hidden = false; b.addEventListener('click', installApp); } }
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   // quando uma versão nova do jogo é instalada, recarrega sozinho uma vez
   const hadCtrl = !!navigator.serviceWorker.controller; let reloaded = false;
