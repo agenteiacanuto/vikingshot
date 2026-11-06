@@ -57,6 +57,35 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 .jarl{flex:1 1 auto;max-width:none}
 .toprow > button:not(.jarl){flex:none}
 @media (max-width:420px){.inst span{display:none}.inst{padding:6px 8px}.runes{padding:4px 8px 4px 5px}.r{padding:3px 5px 3px 3px}.r svg{width:18px;height:18px}.r span{font-size:13px}}
+#tut{position:fixed;inset:0;z-index:9;pointer-events:none}
+#tut .tbub{position:absolute;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 102px);max-width:520px;margin:0 auto;display:flex;gap:10px;align-items:flex-start;background:linear-gradient(170deg,#4a3524,#2b1f16);border:2px solid var(--gold);border-radius:16px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:auto;animation:up .3s ease-out}
+#tut .tav{width:44px;height:44px;flex:none;border-radius:12px;background:radial-gradient(circle at 35% 30%,#f5d37e,#a8761f);display:grid;place-items:center;color:#2a1a08;font:400 28px var(--display)}
+#tut .tx{flex:1;min-width:0}#tut p{margin:0 0 6px;line-height:1.35;font-size:15px}
+#tut .tbtns{display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.tskip{border:0;background:none;color:var(--bone-dim);font:700 12px var(--body);text-decoration:underline}
+#tutArrow{position:absolute;left:0;top:0;margin:-34px 0 0 -14px;font-size:30px;color:var(--gold-hi);text-shadow:0 2px 0 #4a2f08,0 0 10px rgba(0,0,0,.6);animation:tarr .8s ease-in-out infinite alternate}
+@keyframes tarr{to{margin-top:-24px}}
+.mission.dot::after{content:'';position:absolute;right:8px;top:8px;width:11px;height:11px;border-radius:50%;background:#e0523f;border:2px solid #2b1f16}
+.mission{position:relative}
+.mitem.dq{justify-content:space-between}.mitem.dq small{color:var(--bone-dim);font-weight:800}.mitem.dq svg{width:15px;height:15px;vertical-align:-3px}
+.chestline{cursor:pointer;margin-top:6px}
+.chestrow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
+.cd{display:grid;gap:2px;justify-items:center;background:rgba(0,0,0,.28);border-radius:8px;padding:5px 2px;font-size:11px;font-weight:800}
+.cd b{font:400 13px var(--display);color:var(--gold-hi)}.cd span{display:flex;align-items:center;gap:1px}.cd svg{width:13px;height:13px}
+.cd.got{opacity:.45}.cd.now{outline:2px solid var(--gold);background:rgba(217,164,65,.18)}
+.chest{position:relative;width:110px;height:90px;margin:10px auto}
+.chest .box{position:absolute;left:0;right:0;bottom:0;height:55px;border-radius:6px;background:linear-gradient(#8a5a2c,#5c3a1a);border:3px solid #2b1a08;box-shadow:inset 0 0 0 4px #d9a441}
+.chest .lid{position:absolute;left:-3px;right:-3px;top:8px;height:34px;border-radius:30px 30px 4px 4px;background:linear-gradient(#a8743f,#6b4527);border:3px solid #2b1a08;box-shadow:inset 0 0 0 4px #d9a441;transform-origin:50% 100%;transition:transform .5s cubic-bezier(.3,1.6,.5,1);z-index:1}
+.chest:not(.open) .lid{animation:wob 1.4s ease-in-out infinite}
+.chest.open .lid{transform:rotate(-35deg) translateY(-14px)}
+.chest.open::after{content:'';position:absolute;left:10px;right:10px;top:30px;height:30px;background:radial-gradient(#fff6c8,rgba(243,210,122,0));filter:blur(4px)}
+@keyframes wob{50%{transform:rotate(3deg)}}
+.sets{display:grid;gap:6px}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,0,0,.28);border-radius:10px;padding:6px 10px;font-weight:700}
+.tg{border:1px solid #5a4632;border-radius:999px;background:rgba(0,0,0,.3);color:var(--bone-dim);font:800 13px var(--body);padding:5px 12px}
+.tg.on{background:linear-gradient(#9ad27f,#4d8a3a);color:#10200a;border-color:#1f3a14}
+.seg{display:flex;gap:4px}.seg button{border:1px solid #5a4632;border-radius:8px;background:rgba(0,0,0,.3);color:var(--bone-dim);font:800 12px var(--body);padding:5px 9px}
+.seg button.on{background:linear-gradient(#f5d37e,#a8761f);color:#2a1a08}
 .steps{margin:6px 0 10px;padding-left:22px;line-height:1.5}.steps li{margin:4px 0}
 .runes.gems{border-color:#6b5a1e;padding-right:10px}
 /* Cenas */
@@ -285,6 +314,7 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
   </div>
 </div>
 
+<div id="tut" hidden><div class="tbub"><div class="tav">ᛉ</div><div class="tx"><p id="tutTxt"></p><div class="tbtns"><button id="tutOk" class="btn sm" hidden>Entendi</button><button id="tutSkip" class="tskip">Pular tutorial</button></div></div></div><div id="tutArrow">▼</div></div>
 <div id="cine" hidden><div class="lb t"></div><div class="lb b"></div><p id="cineCap"></p><button id="cineSkip">Pular ▸▸</button></div>
 
 <div class="sheet-bg" id="sheetBg" hidden></div>
@@ -296,8 +326,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 if (location.protocol === 'file:') document.getElementById('loadMsg').innerHTML = 'Este jogo 3D precisa ser aberto por um endereço <b>http://</b> (GitHub Pages ou servidor local).<br>Abrir o arquivo com dois cliques não funciona.';
 else setTimeout(() => { const m = document.getElementById('loadMsg'); if (m && document.getElementById('loading')) m.textContent = 'Ainda carregando… se não avançar, recarregue a página.'; }, 25000);
 </script>
-<script src="config.js?v=13"></script>
+<script src="config.js?v=14"></script>
 <script src="lib/supabase.js"></script>
-<script type="module" src="app.js?v=13"></script>
+<script type="module" src="app.js?v=14"></script>
 </body>
 </html>
