@@ -2095,7 +2095,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) Cloud
 Cloud.init();
 
 /* ========== Vida na vila: ações e telas ========== */
-const Life = { sel: { lenha: { n: 1, d: 0 }, mina: { n: 1, d: 0 } } };
+const Life = { sel: { lenha: { n: 1, d: 0 }, mina: { n: 1, d: 0 }, caca: { n: 1, d: 0 } } };
 function payMeals(n) { // tira da despensa (do que tem mais) e completa com comida
   let left = n; const used = {};
   while (left > 0) { const k = PANTRY.filter(x => S.pantry[x] >= 1).sort((a, b) => S.pantry[b] - S.pantry[a])[0]; if (!k) break; S.pantry[k]--; used[k] = (used[k] || 0) + 1; left--; }
