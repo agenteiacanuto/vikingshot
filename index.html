@@ -52,6 +52,12 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 #cloudDot[data-s=err]{background:var(--bad)}
 .rank{margin-left:auto;width:40px;height:40px;display:grid;place-items:center;background:rgba(15,10,6,.78);border:1px solid #5a4632;border-radius:12px}
 .rank + .runes{margin-left:0}
+.inst{margin-left:auto;display:flex;align-items:center;gap:4px;border:2px solid #241708;border-radius:12px;background:linear-gradient(#f5d37e,#a8761f);color:#2a1a08;font:800 13px var(--body);padding:6px 9px;box-shadow:0 3px 0 #6b4a12}
+.inst:not([hidden]) + .rank{margin-left:0}
+.jarl{flex:1 1 auto;max-width:none}
+.toprow > button:not(.jarl){flex:none}
+@media (max-width:420px){.inst span{display:none}.inst{padding:6px 8px}.runes{padding:4px 8px 4px 5px}.r{padding:3px 5px 3px 3px}.r svg{width:18px;height:18px}.r span{font-size:13px}}
+.steps{margin:6px 0 10px;padding-left:22px;line-height:1.5}.steps li{margin:4px 0}
 .runes.gems{border-color:#6b5a1e;padding-right:10px}
 /* Cenas */
 body.cine .hud,body.cine #tags,body.cine .bhud{display:none!important}
@@ -110,7 +116,7 @@ body.cine .hud,body.cine #tags,body.cine .bhud{display:none!important}
 .rk .who small{display:block;color:var(--bone-dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rk .val{font-weight:800;font-variant-numeric:tabular-nums}
 .runes{margin-left:auto;display:flex;align-items:center;gap:6px;background:rgba(15,10,6,.78);border:1px solid #4a3a5e;border-radius:999px;padding:4px 12px 4px 6px;font-weight:800;font-variant-numeric:tabular-nums}
-.res{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.res{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .r{display:flex;align-items:center;gap:5px;background:rgba(15,10,6,.78);border:1px solid #3d3024;border-radius:12px;padding:3px 8px 3px 4px;min-width:0}
 .r svg{width:22px;height:22px;flex:none}
 .r span{font:800 14px var(--body);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -248,6 +254,7 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 <div class="hud top">
   <div class="toprow">
     <button class="jarl" id="btnProfile" aria-label="Perfil e conta"><div class="lv" id="hallLv">1</div><div><b id="vilaName">Vila do Jarl</b><small id="power">Poder 0</small></div><i id="cloudDot" data-s="off"></i></button>
+    <button class="inst" id="btnInstall" hidden aria-label="Instalar o jogo no celular"><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v11M7 10l5 5 5-5" stroke="#2a1a08" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 19h14" stroke="#2a1a08" stroke-width="2.6" stroke-linecap="round"/></svg><span>Instalar</span></button>
     <button class="rank" id="btnRank" aria-label="Ranking"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M7 4h10v4a5 5 0 0 1-10 0z" fill="#f3d27a" stroke="#6b4a12" stroke-width="1.4"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3" fill="none" stroke="#f3d27a" stroke-width="1.6"/><path d="M12 13v4M8 20h8l-1-3H9z" fill="#d9a441" stroke="#6b4a12" stroke-width="1.2"/></svg></button>
     <button class="runes gems" id="btnGems" aria-label="Tesouro do Jarl"><svg viewBox="0 0 24 24" width="20" height="20" data-ico="ouro"></svg><span id="gemsN">0</span></button>
     <button class="runes" id="btnRunes" aria-label="Runas"><svg viewBox="0 0 24 24" width="22" height="22" data-ico="runes"></svg><span id="runes">0</span></button>
@@ -289,8 +296,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 if (location.protocol === 'file:') document.getElementById('loadMsg').innerHTML = 'Este jogo 3D precisa ser aberto por um endereço <b>http://</b> (GitHub Pages ou servidor local).<br>Abrir o arquivo com dois cliques não funciona.';
 else setTimeout(() => { const m = document.getElementById('loadMsg'); if (m && document.getElementById('loading')) m.textContent = 'Ainda carregando… se não avançar, recarregue a página.'; }, 25000);
 </script>
-<script src="config.js?v=12"></script>
+<script src="config.js?v=13"></script>
 <script src="lib/supabase.js"></script>
-<script type="module" src="app.js?v=12"></script>
+<script type="module" src="app.js?v=13"></script>
 </body>
 </html>
