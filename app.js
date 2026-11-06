@@ -564,12 +564,12 @@ function refreshPlot(p) {
       put(g, 'barrel', -.5, -.55, 0, .7); put(g, 'sack', .55, -.6, .5, .8); if (tier >= 2) { const c = shadowize(G.Crate.scene.clone(true)); c.scale.setScalar(.3 / heightOf(c)); c.position.set(.1, 0, -.85); g.add(c); }
       break; }
     case 'cabana': {
-      put(g, 'tent', 0, -.15, .3, 1.15); put(g, 'weaponrack', .7, .45, -.6, .8); put(g, 'barrel', -.7, .5, 0, .65);
+      put(g, 'building_home_A_red', 0, -.1, 0, .85); put(g, 'weaponrack', .72, .5, -.6, .7); put(g, 'barrel', -.75, .55, 0, .6);
       const rack = new THREE.Group(); rack.position.set(-.55, 0, -.55);
       [-.18, .18].forEach(x => rack.add(mesh(new THREE.CylinderGeometry(.03, .03, .55, 5), '#5c3d22', x, .27, 0)));
       rack.add(mesh(new THREE.CylinderGeometry(.025, .025, .45, 5), '#5c3d22', 0, .5, 0)); rack.children[2].rotation.z = Math.PI / 2;
       const hide = mesh(new THREE.BoxGeometry(.32, .3, .02), '#a8743f', 0, .32, .03); rack.add(hide); g.add(rack);
-      if (tier >= 2) { const ant = new THREE.Group(); ant.position.set(0, 1, .45); [-1, 1].forEach(sd => { const b = mesh(new THREE.CylinderGeometry(.015, .02, .3, 4), '#e8d6a8', sd * .1, .12, 0); b.rotation.z = -sd * .6; ant.add(b); const b2 = mesh(new THREE.CylinderGeometry(.012, .015, .15, 4), '#e8d6a8', sd * .2, .22, 0); b2.rotation.z = sd * .3; ant.add(b2); }); g.add(ant); }
+      { const ant = new THREE.Group(); ant.position.set(0, .95, .55); ant.scale.setScalar(tier >= 2 ? 1.5 : 1.1); [-1, 1].forEach(sd => { const b = mesh(new THREE.CylinderGeometry(.015, .02, .3, 4), '#e8d6a8', sd * .1, .12, 0); b.rotation.z = -sd * .6; ant.add(b); const b2 = mesh(new THREE.CylinderGeometry(.012, .015, .15, 4), '#e8d6a8', sd * .2, .22, 0); b2.rotation.z = sd * .3; ant.add(b2); }); g.add(ant); }
       break; }
     case 'quartel': put(g, 'building_barracks_red'); if (tier >= 2) put(g, 'weaponrack', -.65, .55, .4, .8); if (tier >= 3) put(g, 'target', .7, .5, -.5, .7); break;
     case 'ferreiro': put(g, 'building_blacksmith_red'); if (tier >= 2) put(g, 'barrel', .65, .55, 0, .7); break;
