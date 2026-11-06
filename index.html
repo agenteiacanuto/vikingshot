@@ -188,6 +188,7 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 .sheet .desc{margin:0 0 12px;line-height:1.4}
 .stat{display:flex;justify-content:space-between;gap:10px;background:rgba(0,0,0,.28);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-weight:700}
 .stat .up{color:var(--ok)}
+.ver{float:right;margin:4px 0 0;font-size:11px;font-weight:800;color:var(--bone-dim)}
 .stat svg{width:18px;height:18px;vertical-align:-3px}
 .costs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin:10px 0}
 .cost{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.28);border-radius:10px;padding:6px 8px;font-weight:800;font-variant-numeric:tabular-nums}
@@ -288,8 +289,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 if (location.protocol === 'file:') document.getElementById('loadMsg').innerHTML = 'Este jogo 3D precisa ser aberto por um endereço <b>http://</b> (GitHub Pages ou servidor local).<br>Abrir o arquivo com dois cliques não funciona.';
 else setTimeout(() => { const m = document.getElementById('loadMsg'); if (m && document.getElementById('loading')) m.textContent = 'Ainda carregando… se não avançar, recarregue a página.'; }, 25000);
 </script>
-<script src="config.js?v=11"></script>
+<script src="config.js?v=12"></script>
 <script src="lib/supabase.js"></script>
-<script type="module" src="app.js?v=11"></script>
+<script type="module" src="app.js?v=12"></script>
 </body>
 </html>
