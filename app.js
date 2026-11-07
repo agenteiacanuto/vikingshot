@@ -255,6 +255,9 @@ if (S.rs === undefined) S.rs = null;
 if (!S.camp) S.camp = { next: 0, stars: {}, chest: {}, rep: { d: '', n: 0 } };
 if (!S.gear) S.gear = [];
 if (!S.patrol) S.patrol = Date.now();
+if (!S.tower) S.tower = { best: 0 };
+if (!S.tot) S.tot = {};
+if (!S.ach) S.ach = {};
 if (!S.gfx) S.gfx = 'auto';
 if (!S.daily) S.daily = {};
 if (S.tut === undefined) S.tut = (S.mission > 3 || (S.b && S.b.salao && S.b.salao.lvl > 2)) ? 99 : 0;
@@ -497,7 +500,7 @@ function passReward(i) { // i = 0..29
   if ((i + 1) % 10 === 0) return { ['h:' + ['sigrid', 'ragnar', 'freydis'][((i + 1) / 10 - 1 + seasonNo()) % 3]]: 12, gear: 1, runes: 30 };
   return R[i % R.length];
 }
-const PASS_XP_OF = { coletar: 1, obras: 8, exp_lenha: 6, exp_mina: 6, exp_caca: 6, colher: 5, curral: 4, ondas: 25, treinar: 1, saga: 15, pesquisa: 10, recrutar: 2, arena: 15 };
+const PASS_XP_OF = { coletar: 1, obras: 8, exp_lenha: 6, exp_mina: 6, exp_caca: 6, colher: 5, curral: 4, ondas: 25, treinar: 1, saga: 15, pesquisa: 10, recrutar: 2, arena: 15, torre: 15 };
 function passXP(n) { const p = passState(), before = Math.floor(p.xp / PASS_XP); p.xp = Math.min(PASS_LV * PASS_XP, p.xp + n); if (Math.floor(p.xp / PASS_XP) > before && typeof toast === 'function') toast(`Passe do Jarl: nível ${Math.floor(p.xp / PASS_XP)}!`); }
 
 /* ========== Arena ========== */
@@ -1240,7 +1243,7 @@ function stepBattle(dt) {
   // projéteis
   for (let i = B.proj.length - 1; i >= 0; i--) {
     const pr = B.proj[i]; pr.t += dt / pr.dur;
-    if (pr.fx) { pr.m.material.opacity = Math.max(0, 1 - pr.t); if (pr.m.scale) pr.m.scale.multiplyScalar(1 + dt * .4); if (pr.t >= 1) { scene.remove(pr.m); B.proj.splice(i, 1); } continue; }
+    if (pr.fx) { pr.m.material.opacity = Math.max(0, (pr.op || 1) * (1 - pr.t)); if (pr.grow) pr.m.scale.setScalar(.1 + .9 * (1 - Math.pow(1 - Math.min(1, pr.t), 3))); else if (pr.rise) { pr.m.scale.set(1 - pr.t * .6, 1 + pr.t, 1 - pr.t * .6); } else if (pr.m.scale) pr.m.scale.multiplyScalar(1 + dt * .4); if (pr.t >= 1) { scene.remove(pr.m); B.proj.splice(i, 1); } continue; }
     if (alive(pr.target)) [pr.tx, pr.tz] = posOf(pr.target);
     const k = Math.min(1, pr.t), x = pr.sx + (pr.tx - pr.sx) * k, z = pr.sz + (pr.tz - pr.sz) * k, y = pr.sy + (.5 - pr.sy) * k + pr.arc * 4 * k * (1 - k);
     if (pr.kind === 'arrow') pr.m.lookAt(x + (x - pr.m.position.x), y + (y - pr.m.position.y), z + (z - pr.m.position.z));
@@ -1296,6 +1299,7 @@ function moveHero(sx, sy) {
 function endBattle(win) {
   if (!B || B.over) return; B.over = true;
   if (B.mode === 'arena') { endArena(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
+  if (B.mode === 'tower') { endTower(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
   if (B.mode === 'camp') { endCamp(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
   const w = B.wave, surv = { war: 0, arc: 0, hus: 0 }, lost = { war: 0, arc: 0, hus: 0 };
   B.units.forEach(u => { if (u.side === 'ally' && TROOPS[u.kind]) { if (u.dead) lost[u.kind]++; else surv[u.kind]++; } });
@@ -2214,7 +2218,8 @@ function bolt(x0, y0, z0, x1, y1, z1) {
   const pts = []; for (let i = 0; i <= 8; i++) { const k = i / 8; pts.push(new THREE.Vector3(x0 + (x1 - x0) * k + (i && i < 8 ? (Math.random() - .5) * .5 : 0), y0 + (y1 - y0) * k, z0 + (z1 - z0) * k + (i && i < 8 ? (Math.random() - .5) * .5 : 0))); }
   const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: '#cfe8ff', transparent: true })); scene.add(m); B.proj.push({ m, kind: 'fx', t: 0, dur: .35, fx: true });
 }
-function castSkill(u) {
+function castSkill(u) { const ok = castSkill0(u); if (ok) skillFx(u); return ok; }
+function castSkill0(u) {
   const H = HEROES[u.D.id], F = foesAlive(), p = u.o.position; if (!F.length) return false;
   const near = (r, from = u) => F.filter(e => dist(from, e) < r).sort((a, b) => dist(from, a) - dist(from, b));
   const say2 = () => { floatText(p.x, 1.4, p.z, H.skn + '!', RAR[H.rar].col); faceFor(u, 'shout', 1); };
@@ -2338,7 +2343,9 @@ function frame(now) {
   for (let i = smokes.length - 1; i >= 0; i--) { const s = smokes[i]; s.life -= dt / 3000; s.m.position.y += dt * .0007; s.m.position.x += dt * .0003; s.m.scale.setScalar(.4 + (1 - s.life) * 1.1); s.m.material.opacity = s.life * .55; if (s.life <= 0) { scene.remove(s.m); s.m.material.dispose(); smokes.splice(i, 1); } }
   for (let i = sparks.length - 1; i >= 0; i--) { const s = sparks[i]; s.life -= dt / 900; const a = s.pts.geometry.attributes.position; s.vel.forEach((v, k) => { a.array[k * 3] += v[0]; a.array[k * 3 + 1] += v[1]; a.array[k * 3 + 2] += v[2]; v[1] -= .004; }); a.needsUpdate = true; s.pts.material.opacity = s.life; if (s.life <= 0) { scene.remove(s.pts); sparks.splice(i, 1); } }
   updateTags(); updateFieldTags(); renderTut(); watchFps(ds);
+  let shk = null; if (B && B.shake > 0) { B.shake -= ds; shk = [(Math.random() - .5) * .22, (Math.random() - .5) * .16]; camera.position.x += shk[0]; camera.position.y += shk[1]; }
   renderer.render(scene, camera);
+  if (shk) { camera.position.x -= shk[0]; camera.position.y -= shk[1]; }
 }
 
 /* ========== UI ========== */
@@ -2544,6 +2551,7 @@ ${(window.VS_CLOUD || {}).google ? `      <button class="btn google" data-p="goo
   openSheet(`<p class="ver">versão ${GAME_VERSION}</p><h2>Perfil</h2><p class="sub">Poder ${fmt(power())} · Onda ${S.wave > MAXWAVE ? 'todas vencidas' : S.wave}</p>
     <label class="fld"><span>Nome do Jarl</span><input id="pfJarl" maxlength="18" value="${esc(S.jarl || 'Jarl')}"></label>
     <label class="fld"><span>Nome da vila</span><input id="pfVila" maxlength="24" value="${esc(S.vila || 'Vila do Jarl')}"></label>
+    <div class="actions" style="margin:8px 0 0"><button class="btn ghost sm" data-a="ach">Conquistas${achReady() ? ' •' : ''}</button><button class="btn ghost sm" data-a="tower">Torre: andar ${S.tower.best}</button></div>
     ${acc}
     <p class="sub" style="margin-top:12px">Ajustes</p>
     <div class="sets">
@@ -2894,7 +2902,7 @@ function openSaga(c) {
     return `<button class="node${st ? ' done' : ''}${cur ? ' cur' : ''}${s === 7 ? ' boss' : ''}" data-a="stage" data-k="${g}" ${open ? '' : 'disabled'}><b>${sagaChap + 1}-${s + 1}</b><span>${s === 7 ? '☠' : s === 3 ? '⚔' : ''}</span><i>${'★'.repeat(st)}${'☆'.repeat(3 - st)}</i></button>`; }).join('');
   const PL = patrolLoot();
   openSheet(`<h2>Saga do Fiorde</h2><div class="patrol"><div><b>Patrulha</b><small>${fmtT(Math.min(PATROL_MAX, Date.now() - S.patrol) / 1000)} de 12h · rende mais quanto mais longe você vai na Saga</small><span>${Object.entries(PL.o).map(([k, v]) => `${icoSVG(k)}${fmt(v)}`).join(' ') || 'saiu agora há pouco'}</span></div><button class="btn sm" data-a="patrol" ${Object.keys(PL.o).length ? '' : 'disabled'}>Coletar</button></div>
-    <div class="actions" style="margin:4px 0 8px"><button class="btn ghost sm" data-a="arena">⚔ Arena</button><button class="btn ghost sm" data-a="pass">Passe do Jarl</button></div>
+    <div class="actions" style="margin:4px 0 8px"><button class="btn ghost sm" data-a="arena">⚔ Arena</button><button class="btn ghost sm" data-a="tower">Torre</button><button class="btn ghost sm${achReady() ? ' dotb' : ''}" data-a="ach">Conquistas</button><button class="btn ghost sm" data-a="pass">Passe</button></div>
     <div class="tabs">${CHAPTERS.map((x, i) => `<button data-a="chap" data-k="${i}" class="${i === sagaChap ? 'on' : ''}" ${i <= maxC ? '' : 'disabled'}>${i + 1}</button>`).join('')}</div>
     <p class="sub"><b style="color:var(--gold-hi)">Capítulo ${sagaChap + 1}: ${C.name}</b> · herói do capítulo: ${HEROES[C.hero].name}</p>
     <div class="path">${nodes}</div>
@@ -2955,7 +2963,8 @@ $('#btnEvent').addEventListener('click', () => { Snd.init(); Snd.tap(); openEven
 function renderSide() {
   const canHero = HERO_IDS.some(id => { const h = hs(id); return h.lvl ? (h.st < 5 && h.sh >= heroStarCost(id, h.st)) : h.sh >= RAR[HEROES[id].rar].need; });
   $('#btnHeroes').classList.toggle('dot', canHero);
-  $('#btnSaga').classList.toggle('dot', Date.now() - S.patrol > 2 * 3600e3);
+  $('#btnSaga').classList.toggle('dot', Date.now() - S.patrol > 2 * 3600e3 || achReady());
+  $('#btnTower').classList.toggle('dot', towerOpen() && S.tower.best === 0); $('#towLv').textContent = towerOpen() ? (S.tower.best ? 'And ' + S.tower.best : 'Nova!') : '🔒';
   { const p = passState(), lv = Math.floor(p.xp / PASS_XP); $('#btnPass').classList.toggle('dot', Array.from({ length: lv }, (_, i) => i).some(i => !p.got.includes(i))); $('#passLv').textContent = 'Nv ' + lv; }
   $('#btnArena').classList.toggle('dot', arenaState().used < ARENA_TICKETS && S.team.length > 0 && S.b.salao.lvl >= 3);
   $('#btnEvent').classList.toggle('dot', EV_TIERS.some(([p], i) => evState().pts >= p && !evState().got.includes(i)));
@@ -3060,6 +3069,114 @@ function sweepStage(g) {
   const r = stageReward(c, s, false); if (Math.random() < .4) r.gear = 1; for (const x in r) gain(x, r[x]); dcount('saga'); Snd.done(); save(); dirty = true;
   openSheet(rewardCard('Vitória rápida!', `Fase ${c + 1}-${s + 1} · repetições hoje ${S.camp.rep.n}/10`, r).replace('data-a="close">Coletar', `data-a="stage" data-k="${g}">Continuar`));
 }
+
+/* ========== Golpes especiais: efeitos ========== */
+function shock(x, z, col, r) { const m = new THREE.Mesh(new THREE.RingGeometry(r * .78, r, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending })); m.position.set(x, .1, z); m.scale.setScalar(.1); scene.add(m); B.proj.push({ m, kind: 'fx', t: 0, dur: .55, fx: true, grow: true }); }
+function pillar(x, z, col) { const m = new THREE.Mesh(new THREE.CylinderGeometry(.45, .6, 5, 18, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .55, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })); m.position.set(x, 2.5, z); scene.add(m); B.proj.push({ m, kind: 'fx', t: 0, dur: .7, fx: true, rise: true, op: .55 }); }
+const SK_COL = { warcry: '#f3d27a', boom: '#ffb36b', charge: '#d9b07a', backstab: '#9a8cff', heal: '#7dff9a', rain: '#f3d27a', wall: '#8fd3ff', fury: '#ff6a4a', thunder: '#cfe8ff' };
+let skbT = 0;
+function skillFx(u) {
+  if (!B) return; const H = HEROES[u.D.id], p = u.o.position, col = SK_COL[H.sk] || RAR[H.rar].col;
+  pillar(p.x, p.z, col); shock(p.x, p.z, col, 2.6); burstAt(p.x, 1, p.z, col, 14, .05);
+  if (['boom', 'thunder', 'fury', 'charge', 'wall'].includes(H.sk)) B.shake = Math.max(B.shake || 0, H.sk === 'thunder' ? .45 : .28);
+  if (!B.cut && !B.ending) { B.slow = .4; later(.16, () => { if (B && !B.cut) B.slow = 1; }); }
+  const el = $('#skb'); if (!el) return; clearTimeout(skbT);
+  el.style.setProperty('--sc', RAR[H.rar].col); el.innerHTML = `<b>${H.name}</b><span>${H.skn}</span>`;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); skbT = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+/* ========== Torre de Valhalla (andares infinitos) ========== */
+const TOWER_UNLOCK = 8; // depois da fase 1-8 da Saga
+const towerOpen = () => S.camp.next >= TOWER_UNLOCK;
+const towerChap = f => Math.floor((f - 1) / 10) % CHAPTERS.length;
+function towerDef(f) {
+  const C = CHAPTERS[towerChap(f)], boss = f % 10 === 0, mini = f % 5 === 0 && !boss, n = Math.min(18, 6 + Math.floor(f / 3)), list = [];
+  if (boss) list.push(C.boss); else if (mini) list.push(C.pool[2], C.pool[2]);
+  let k = f * 17 + 3; while (list.length < n) { k = (k * 31 + 7) % 101; list.push(C.pool[k % C.pool.length]); }
+  return { list, lvl: .9 * Math.pow(1.065, f - 1), boss, mini };
+}
+function towerReward(f) {
+  const r = { runes: 3 + Math.floor(f / 4), food: 120 + 40 * f, iron: 30 + 15 * f };
+  if (f % 5 === 0) { r.mead = f % 10 === 0 ? 3 : 1; r.gear = 1; r.saga = 2 + Math.floor(f / 10); }
+  if (f % 10 === 0) { r.diamante = 1 + Math.floor(f / 30); r['h:' + CHAPTERS[towerChap(f)].hero] = 5; }
+  return r;
+}
+function openTower() {
+  sheetFor = null;
+  if (!towerOpen()) { openSheet(`<h2>Torre de Valhalla</h2><p class="desc">A torre se abre depois que você vencer a fase 1-8 da Saga (o Rei Draugr).</p><div class="actions"><button class="btn" data-a="saga">Ir para a Saga</button><button class="btn ghost" data-a="close">Fechar</button></div>`); return; }
+  const f = S.tower.best + 1, d = towerDef(f), cnt = {}; d.list.forEach(k => cnt[k] = (cnt[k] || 0) + 1);
+  const floors = Array.from({ length: 7 }, (_, i) => f + 3 - i).filter(x => x > 0).map(x => `<div class="tfl${x < f ? ' done' : x === f ? ' cur' : ''}${x % 10 === 0 ? ' boss' : x % 5 === 0 ? ' mini' : ''}"><b>${x}</b><span>${x % 10 === 0 ? '☠ chefe' : x % 5 === 0 ? '⚔ guardião' : CHAPTERS[towerChap(x)].name}</span>${x < f ? '✓' : ''}</div>`).join('');
+  openSheet(`<h2>Torre de Valhalla</h2><p class="sub">Cada andar é mais difícil que o anterior. Até onde você chega? Recorde: andar ${S.tower.best}</p>
+    <div class="tower">${floors}</div>
+    <div class="stat"><span>Andar ${f}</span><span>${Object.entries(cnt).map(([k, v]) => `${v} ${v > 1 ? FOES[k].pl : FOES[k].name}`).join(' · ')}</span></div>
+    <div class="stat"><span>Nível dos inimigos</span><span>${Math.round(d.lvl * 10)}</span></div>
+    <p class="sub">Prêmio do andar ${f}${f % 5 === 0 ? ' (andar especial!)' : ''}</p>${costHTML(towerReward(f))}
+    <p class="sub">A cada 5 andares: hidromel e equipamento · a cada 10: diamante e fragmentos de herói. Tentativas livres, sem perder tropas.</p>
+    <div class="actions"><button class="btn" data-a="tfight">Subir ao andar ${f}</button><button class="btn ghost" data-a="ach">Conquistas</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
+}
+function startTower() {
+  if (B || CINE || !towerOpen()) return;
+  if (!restReady) { toast('Carregando… só um instante'); loadRest().then(startTower); return; }
+  const f = S.tower.best + 1, d = towerDef(f), c = towerChap(f);
+  closeSheet(); Snd.init(); buildArena(c); setAmbience(c);
+  B = { spd: S.bspd || 1, mode: 'tower', island: true, floor: f, chap: c, lvlF: d.lvl, wave: 1, t: 0, units: [], proj: [], blds: [], bhp: {}, killed: 0, total: d.list.length, queue: [], heroDown: 0, skillCd: 0, over: false, deployed: { ...S.army }, endT: 0, walls: null, shooters: [], later: [],
+    bounds: { x0: ARENA.x - 13, x1: ARENA.x + 13, z0: ARENA.z - 8, z1: ARENA.z + 8 }, rally: [ARENA.x - 4.5, ARENA.z] };
+  glowEyes();
+  B.hero = mkUnit('ally', 'hero', ARENA.x - 7, ARENA.z); activate(B.hero);
+  S.team.forEach((id, i) => { const u = mkUnit('ally', 'h_' + id, ARENA.x - 6.3, ARENA.z - 1.4 + i * 1.4); u.spawnAt = .2 + i * .2; B.queue.push(u); });
+  let k = 0; ['hus', 'war', 'arc'].forEach(type => { for (let i = 0; i < (S.army[type] || 0); i++) { const u = mkUnit('ally', type, ARENA.x - 8 - Math.random(), ARENA.z + (Math.random() - .5) * 5); u.spawnAt = .5 + k++ * .12; B.queue.push(u); } });
+  const first60 = Math.ceil(d.list.length * .6);
+  d.list.forEach((kind, i) => { const late = i >= first60, u = mkUnit('enemy', kind, ARENA.x + 6 + Math.random() * 3, ARENA.z + (Math.random() - .5) * 8); u.spawnAt = (late ? 12 : 1.2) + (i % 8) * .35; u.rise = !FOES[kind].beast; B.queue.push(u); });
+  Object.assign(CAMB, { x0: ARENA.x - 12, x1: ARENA.x + 12, z0: ARENA.z - 8, z1: ARENA.z + 10 });
+  B.follow = true; B.slow = 1; B.oldD = cam.d; cam.d = 17; cam.x = ARENA.x - 4; cam.z = ARENA.z + 2; placeCamera();
+  document.body.classList.add('battle', 'camp'); $('#bhud').hidden = false; $('#bWave').textContent = `Torre · andar ${f}${d.boss ? ' · Chefe' : ''}`;
+  folk.forEach(x => x.o.visible = false); guards.forEach(g2 => g2.o.visible = false);
+  Music.start('batalha'); Snd.horn(); say(d.boss ? `Andar ${f}! ${FOES[CHAPTERS[c].boss].name} guarda a torre!` : `Andar ${f} da Torre de Valhalla!`);
+}
+function endTower(win) {
+  const f = B.floor; let rew = null;
+  if (win) { S.tower.best = Math.max(S.tower.best, f); rew = towerReward(f); for (const k in rew) gain(k, rew[k]); dcount('torre'); Snd.done(); say(f % 10 === 0 ? 'O guardião caiu! Mais alto, vikings!' : 'Andar vencido!'); }
+  else { Snd.lose(); say('A torre resistiu. Voltaremos mais fortes.'); }
+  save(); dirty = true;
+  B.pendEnd = { win, t: .7, html: win
+    ? `<h2>Andar ${f} vencido!</h2><p class="sub">Torre de Valhalla · recorde: andar ${S.tower.best}</p><div class="costs big">${Object.entries(rew).map(([k, v]) => `<div class="cost">${icoSVG(k)}+${fmt(v)}</div>`).join('')}</div><div class="actions"><button class="btn" data-a="tower">Próximo andar</button><button class="btn ghost" data-a="home">Vila</button></div>`
+    : `<h2>A torre resistiu…</h2><p class="sub">Andar ${f}</p><p class="desc">Evolua heróis, equipamentos e pesquisas e tente de novo. As tentativas são livres.</p><div class="actions"><button class="btn" data-a="tower">Torre</button><button class="btn ghost" data-a="heroes">Heróis</button></div>` };
+}
+
+/* ========== Conquistas ========== */
+const ACH = [
+  { id: 'saga', n: 'Desbravador da Saga', d: 'Vença fases da Saga', v: () => S.camp.next, t: [4, 8, 16, 24, 36, 48] },
+  { id: 'stars', n: 'Colecionador de Estrelas', d: 'Junte estrelas na Saga', v: () => campStars(), t: [12, 36, 72, 108, 144] },
+  { id: 'heroes', n: 'Salão dos Heróis', d: 'Tenha heróis recrutados', v: () => HERO_IDS.filter(id => hs(id).lvl).length, t: [2, 4, 6, 8, 9] },
+  { id: 'wave', n: 'Muralha de Ferro', d: 'Vença ondas de defesa da vila', v: () => Math.min(MAXWAVE, S.wave - 1), t: [3, 10, 20, 30] },
+  { id: 'tower', n: 'Escalada a Valhalla', d: 'Suba andares da Torre', v: () => S.tower.best, t: [5, 10, 20, 30, 50, 75, 100] },
+  { id: 'arena', n: 'Campeão da Arena', d: 'Vença lutas na Arena', v: () => arenaState().wins, t: [1, 10, 30, 75, 150] },
+  { id: 'gear', n: 'Arsenal do Jarl', d: 'Junte equipamentos', v: () => S.gear.length, t: [3, 10, 20, 35] },
+  { id: 'salao', n: 'Jarl Poderoso', d: 'Evolua o Salão do Jarl', v: () => S.b.salao.lvl, t: [3, 5, 7, 10] },
+  { id: 'power', n: 'Poder do Norte', d: 'Aumente o poder da vila', v: () => power(), t: [300, 800, 1600, 2800, 4200] },
+  { id: 'exp', n: 'Mestre das Expedições', d: 'Envie lenhadores, mineiros e caçadores', v: () => (S.tot.exp_lenha || 0) + (S.tot.exp_mina || 0) + (S.tot.exp_caca || 0), t: [5, 25, 100, 300] },
+  { id: 'colher', n: 'Mãos da Terra', d: 'Colha a horta e o pomar', v: () => Math.max(S.tot.colher || 0, S.stats.harvest || 0), t: [5, 25, 100, 300] },
+  { id: 'obras', n: 'Grande Construtor', d: 'Inicie obras na vila', v: () => S.tot.obras || 0, t: [5, 20, 60, 150] }
+];
+const achRew = (a, i) => { const last = i === a.t.length - 1; return { runes: 5 + 5 * i, saga: 1 + i, mead: last ? 3 : i >= 2 ? 1 : 0 }; };
+const achReady = () => ACH.some(a => { const i = S.ach[a.id] || 0; return i < a.t.length && a.v() >= a.t[i]; });
+function openAch() {
+  sheetFor = null; const done = ACH.reduce((n, a) => n + (S.ach[a.id] || 0), 0), all = ACH.reduce((n, a) => n + a.t.length, 0);
+  const list = ACH.map(a => { const i = S.ach[a.id] || 0, v = a.v(), max = i >= a.t.length, goal = a.t[Math.min(i, a.t.length - 1)], ok = !max && v >= goal;
+    return `<div class="ach${ok ? ' ok' : max ? ' done' : ''}"><div class="ai"><b>${a.n}</b><small>${a.d}: ${fmt(Math.min(v, goal))}/${fmt(goal)}</small><div class="hbar gold"><i style="width:${Math.min(100, v / goal * 100)}%"></i></div><span class="astars">${'★'.repeat(i)}${'☆'.repeat(a.t.length - i)}</span></div>
+      ${max ? '<span class="adone">✓</span>' : ok ? `<button class="btn sm" data-a="achget" data-k="${a.id}">Pegar</button>` : `<span class="arew">${Object.entries(achRew(a, i)).filter(([, x]) => x).map(([k, x]) => `${icoSVG(k)}${x}`).join(' ')}</span>`}</div>`; }).sort((x, y) => (y.includes('class="ach ok') - x.includes('class="ach ok'))).join('');
+  openSheet(`<h2>Conquistas</h2><p class="sub">${done} de ${all} estrelas de conquista · cada estrela dá runas, pergaminhos e hidromel</p><div class="achs">${list}</div><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`);
+}
+sheet.addEventListener('click', e => {
+  const a = e.target.closest('[data-a]'); if (!a) return; const k = a.dataset.k;
+  switch (a.dataset.a) {
+    case 'tower': Snd.tap(); openTower(); break;
+    case 'tfight': startTower(); break;
+    case 'ach': Snd.tap(); openAch(); break;
+    case 'achget': { const A = ACH.find(x => x.id === k); if (!A) break; const i = S.ach[k] || 0; if (i >= A.t.length || A.v() < A.t[i]) break; S.ach[k] = i + 1; const r = achRew(A, i); for (const x in r) if (r[x]) gain(x, r[x]); Snd.chime(); toast(`Conquista: ${A.n} ${'★'.repeat(i + 1)}`); save(); dirty = true; openAch(); break; }
+  }
+});
+$('#btnTower').addEventListener('click', () => { Snd.init(); Snd.tap(); openTower(); });
 $('#btnPass').addEventListener('click', () => { Snd.init(); Snd.tap(); openPass(); });
 $('#btnArena').addEventListener('click', () => { Snd.init(); Snd.tap(); openArena(); });
 $('#btnSpd').textContent = 'x' + (S.bspd || 1); $('#btnSpd').classList.toggle('on', S.bspd === 2);
@@ -3185,7 +3302,7 @@ function dailyQuests() {
   }
   return S.dq;
 }
-function dcount(k, n = 1) { const q = dailyQuests(); q.cnt[k] = (q.cnt[k] || 0) + n; evAdd(k, n); if (PASS_XP_OF[k]) passXP(PASS_XP_OF[k] * n); dirty = true; }
+function dcount(k, n = 1) { S.tot = S.tot || {}; S.tot[k] = (S.tot[k] || 0) + n; const q = dailyQuests(); q.cnt[k] = (q.cnt[k] || 0) + n; evAdd(k, n); if (PASS_XP_OF[k]) passXP(PASS_XP_OF[k] * n); dirty = true; }
 const dqDef = k => DQ_POOL.find(q => q.k === k);
 const dqDone = k => (dailyQuests().cnt[k] || 0) >= dqDef(k).n;
 function dqClaimable() { const q = dailyQuests(); return q.list.some(k => dqDone(k) && !q.got.includes(k)) || (!q.bonus && q.list.every(k => q.got.includes(k))); }
@@ -3252,7 +3369,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 17;
+const GAME_VERSION = 18;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -3275,4 +3392,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && !B && !CINE) { reloaded = true; save(); location.reload(); } });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); setInterval(() => r.update(), 5 * 60e3); }).catch(() => {}));
 }
-window.__vs = { startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
