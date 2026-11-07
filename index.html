@@ -86,6 +86,44 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 .tg.on{background:linear-gradient(#9ad27f,#4d8a3a);color:#10200a;border-color:#1f3a14}
 .seg{display:flex;gap:4px}.seg button{border:1px solid #5a4632;border-radius:8px;background:rgba(0,0,0,.3);color:var(--bone-dim);font:800 12px var(--body);padding:5px 9px}
 .seg button.on{background:linear-gradient(#f5d37e,#a8761f);color:#2a1a08}
+.side{top:auto;bottom:auto;left:auto;right:0;top:calc(env(safe-area-inset-top,0px) + 112px);display:grid;gap:8px;width:auto;padding-right:max(8px,env(safe-area-inset-right,0px))}
+.sbtn{position:relative;width:58px;display:grid;justify-items:center;gap:1px;border:2px solid #241708;border-radius:14px;background:linear-gradient(var(--wood-hi),var(--wood));box-shadow:0 3px 0 var(--edge);padding:5px 2px 4px;color:var(--bone);font:800 11px var(--body)}
+.sbtn svg{width:28px;height:28px}.sbtn small{font-size:9px;color:var(--gold-hi)}
+.sbtn.dot::after,.mission.dot::after{content:'';position:absolute;right:4px;top:4px;width:11px;height:11px;border-radius:50%;background:#e0523f;border:2px solid #2b1f16}
+body.battle .side,body.cine .side{display:none!important}
+body.camp .btop .wavebox:nth-child(2){display:none}body.camp .btop{grid-template-columns:1fr}
+.teamrow{display:flex;gap:8px;margin:8px 0}
+.slot{width:64px;height:64px;border-radius:14px;border:2px dashed #5a4632;display:grid;place-items:center;color:var(--bone-dim);font:800 22px var(--body);background:rgba(0,0,0,.25);overflow:hidden;padding:0}
+button.slot{border-style:solid;border-color:var(--gold)}.slot img{width:100%;height:100%;object-fit:cover}.slot.lock{opacity:.5;font-size:18px}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.hcard{display:grid;justify-items:center;gap:1px;border:2px solid var(--rc);border-radius:14px;background:linear-gradient(170deg,rgba(255,255,255,.06),rgba(0,0,0,.3));padding:6px 4px;color:var(--bone)}
+.hcard.locked{filter:grayscale(.85) brightness(.75)}.hcard.team{box-shadow:0 0 0 2px var(--gold-hi) inset}.hcard.can{animation:glow 1.2s ease-in-out infinite}
+.hcard b{font:400 17px var(--display);color:var(--gold-hi)}.hcard small{font-size:11px;color:var(--bone-dim);font-weight:800}
+.pt{width:72px;height:72px;border-radius:12px;overflow:hidden;background:radial-gradient(circle at 50% 35%,rgba(255,255,255,.18),rgba(0,0,0,.35));display:grid;place-items:center}
+.pt img{width:100%;height:100%;object-fit:cover}.pt.big{width:96px;height:96px;border:2px solid var(--rc);flex:none}.pfb{font:400 34px var(--display);color:var(--gold-hi)}
+.st{color:#f3d27a;font-size:12px;letter-spacing:1px}.st i{color:#4a3a2a;font-style:normal}.st.big{font-size:20px}
+.shb{position:relative;width:100%;height:13px;border-radius:7px;background:#120d09;overflow:hidden}.shb i{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#a8761f,#f3d27a)}
+.shb span{position:relative;display:block;text-align:center;font:800 10px/13px var(--body);color:#fff}
+.hhead{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+.odds{display:flex;gap:10px;flex-wrap:wrap;font-weight:800;font-size:13px;margin:6px 0}
+.reveal{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;margin:8px 0}
+.rv{display:grid;justify-items:center;border:2px solid var(--rc);border-radius:12px;padding:6px;background:rgba(0,0,0,.3);animation:flip .5s ease-out both}
+.rv b{font:400 16px var(--display);color:var(--gold-hi)}.rv span{font:800 16px var(--body);color:#fff}
+@keyframes flip{from{transform:rotateY(90deg) scale(.6);opacity:0}}
+.techs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.tech{display:grid;gap:2px;text-align:left;border:1px solid #5a4632;border-radius:12px;background:rgba(0,0,0,.28);padding:7px 9px;color:var(--bone)}
+.tech b{font:400 16px var(--display);color:var(--gold-hi)}.tech small{font-size:12px;color:var(--bone-dim);font-weight:700}
+.tech .lv{color:#b59cff;letter-spacing:2px}.tech .tc{font-size:12px;font-weight:800}.tech .tc svg{width:14px;height:14px;vertical-align:-3px}
+.tech.locked{opacity:.55}.tech.max{outline:1px solid var(--ok)}.tech .req{margin:0;font-size:12px}
+.path{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.node{display:grid;justify-items:center;gap:1px;border:2px solid #5a4632;border-radius:14px;background:rgba(0,0,0,.3);padding:8px 2px;color:var(--bone)}
+.node b{font:400 18px var(--display)}.node i{font-style:normal;color:#f3d27a;font-size:13px;letter-spacing:1px}
+.node.done{border-color:#7a6a3a}.node.cur{border-color:var(--gold-hi);box-shadow:0 0 0 2px var(--gold-hi) inset;animation:glow 1.2s ease-in-out infinite}
+.node.boss{background:rgba(120,30,20,.35)}.node:disabled{opacity:.4}
+.bigstars{text-align:center;font-size:44px;line-height:1;margin:4px 0}.bigstars b{color:#f3d27a;text-shadow:0 0 12px rgba(243,210,122,.7)}.bigstars i{color:#3a2c1c;font-style:normal}
+.evhow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.evhow span{background:rgba(0,0,0,.28);border-radius:8px;padding:4px 8px;font-size:12px;font-weight:800}
+.tiers{display:grid;gap:6px}.tier{display:flex;align-items:center;gap:10px;background:rgba(0,0,0,.28);border-radius:10px;padding:6px 10px;font-weight:800}
+.tier b{width:56px;color:var(--gold-hi)}.tier span{flex:1;display:flex;gap:6px;flex-wrap:wrap}.tier svg{width:16px;height:16px;vertical-align:-3px}.tier.done{opacity:.5}.tier.ok{outline:1px solid var(--gold)}
 .steps{margin:6px 0 10px;padding-left:22px;line-height:1.5}.steps li{margin:4px 0}
 .runes.gems{border-color:#6b5a1e;padding-right:10px}
 /* Cenas */
@@ -233,6 +271,7 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 .actions{display:flex;gap:10px;margin-top:12px}
 .btn{flex:1;appearance:none;border:2px solid #241708;border-radius:12px;background:linear-gradient(#f5d37e,var(--gold) 55%,#a8761f);color:#2a1a08;
   font:400 22px var(--display);padding:9px 12px 10px;box-shadow:0 4px 0 #6b4a12}
+.btn svg{width:22px;height:22px;vertical-align:-5px}
 .btn:active{transform:translateY(3px);box-shadow:0 1px 0 #6b4a12}
 .btn.ghost{background:linear-gradient(var(--wood-hi),var(--wood));color:var(--bone);border-color:var(--edge);box-shadow:0 4px 0 var(--edge)}
 .btn.rune{background:linear-gradient(#c9b5ff,#7a5ad8);color:#1c1238;box-shadow:0 4px 0 #3f2a80}
@@ -291,6 +330,11 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
   <div class="res" id="res"></div>
 </div>
 
+<div class="hud side">
+  <button class="sbtn" id="btnHeroes"><svg viewBox="0 0 24 24"><path d="M12 2l3 4 5-1-2 5 3 4-5 1-1 5-3-3-3 3-1-5-5-1 3-4-2-5 5 1z" fill="#f3d27a" stroke="#6b4a12" stroke-width="1.3"/><circle cx="12" cy="11" r="3" fill="#a8322b"/></svg><span>Heróis</span></button>
+  <button class="sbtn" id="btnSaga"><svg viewBox="0 0 24 24"><path d="M4 4h12l4 4v12H8l-4-4z" fill="#e8d6a8" stroke="#6b4a12" stroke-width="1.3"/><path d="M8 9h8M8 12h8M8 15h5" stroke="#8a3a2a" stroke-width="1.5"/></svg><span>Saga</span></button>
+  <button class="sbtn" id="btnEvent"><svg viewBox="0 0 24 24"><path d="M6 3h12v5a6 6 0 0 1-12 0z" fill="#d9a441" stroke="#6b4a12" stroke-width="1.3"/><path d="M12 14v4M8 21h8l-1-3H9z" fill="#a8761f" stroke="#6b4a12" stroke-width="1.2"/></svg><span>Evento</span><small id="evLeft"></small></button>
+</div>
 <div class="hud bottom">
   <button class="mission" id="mission"><span class="ic">ᛟ</span><span class="tx"><small>Missão</small><b id="missionText">…</b></span></button>
   <div class="dock">
@@ -326,8 +370,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 if (location.protocol === 'file:') document.getElementById('loadMsg').innerHTML = 'Este jogo 3D precisa ser aberto por um endereço <b>http://</b> (GitHub Pages ou servidor local).<br>Abrir o arquivo com dois cliques não funciona.';
 else setTimeout(() => { const m = document.getElementById('loadMsg'); if (m && document.getElementById('loading')) m.textContent = 'Ainda carregando… se não avançar, recarregue a página.'; }, 25000);
 </script>
-<script src="config.js?v=15"></script>
+<script src="config.js?v=16"></script>
 <script src="lib/supabase.js"></script>
-<script type="module" src="app.js?v=15"></script>
+<script type="module" src="app.js?v=16"></script>
 </body>
 </html>
