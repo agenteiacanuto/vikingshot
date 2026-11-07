@@ -258,6 +258,7 @@ if (!S.patrol) S.patrol = Date.now();
 if (!S.tower) S.tower = { best: 0 };
 if (!S.tot) S.tot = {};
 if (!S.ach) S.ach = {};
+setTimeout(() => { if (typeof HERO_IDS === 'undefined') return; let any = 0; HERO_IDS.forEach(id => { const h = hs(id), need = RAR[HEROES[id].rar].need; if (!h.lvl && h.sh >= need) { h.sh -= need; h.lvl = 1; h.st = 1; if (S.team.length < teamSlots()) S.team.push(id); any = 1; toast(`${HEROES[id].name} entrou para a sua saga!`); } }); if (any) { save(); dirty = true; } }, 3000);
 if (!S.cb) S.cb = { w: 0, got: [], d: '', n: 0, best: 0 };
 if (!S.gfx) S.gfx = 'auto';
 if (!S.daily) S.daily = {};
@@ -2920,16 +2921,21 @@ function openTavern() {
   openSheet(`<h2>Taverna</h2><p class="sub">Pague uma rodada de hidromel e os heróis contam suas sagas</p>
     <div class="stat"><span>Seu hidromel</span><span>${icoSVG('mead')} ${m}</span></div>
     <div class="odds">${RECRUIT_ODDS.map(([k, p]) => `<span style="color:${RAR[k].col}">${RAR[k].n} ${Math.round(p * 100)}%</span>`).join('')}</div>
-    <p class="sub">Garantia: a cada 10 rodadas, fragmentos de herói Épico ou Lendário (faltam ${pity}). O hidromel vem da Saga, das missões, do baú e dos eventos.</p>
+    <p class="sub">${S.firstRec ? '' : '<b style="color:var(--gold-hi)">Primeira rodada: um herói garantido!</b> '}Cada rodada dá fragmentos; completou os fragmentos, o herói entra na equipe. Garantia: a cada 10 rodadas, fragmentos de herói Épico ou Lendário (faltam ${pity}). O hidromel vem da Saga, das missões, do baú e dos eventos.</p>
     <div class="actions"><button class="btn" data-a="rec" data-k="1" ${m >= 1 ? '' : 'disabled'}>1 rodada · ${icoSVG('mead')}1</button><button class="btn rune" data-a="rec" data-k="10" ${m >= 10 ? '' : 'disabled'}>10 rodadas · ${icoSVG('mead')}10</button></div>
     <div class="actions"><button class="btn ghost" data-a="heroes">Ver heróis</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
 }
 function doRecruit(n) {
   if ((S.gems.mead || 0) < n) return; S.gems.mead -= n; const got = [];
+  // primeira rodada da vida: um herói garantido inteiro
+  if (!S.firstRec) { S.firstRec = 1; const pick = ['erik', 'harald', 'leif'].find(id => !hs(id).lvl); if (pick) { const need = RAR[HEROES[pick].rar].need, add = Math.max(0, need - hs(pick).sh); hs(pick).sh += add; got.push({ id: pick, n: add }); } }
   for (let i = 0; i < n; i++) { S.pity = (S.pity || 0) + 1; got.push(recruitOnce(S.pity % 10 === 0)); }
-  dcount('recrutar', n); save(); dirty = true; Snd.chime();
   const sum = {}; got.forEach(g => sum[g.id] = (sum[g.id] || 0) + g.n);
-  openSheet(`<h2>Fragmentos recebidos!</h2><div class="reveal">${Object.entries(sum).map(([id, v], i) => { const H = HEROES[id], R = RAR[H.rar]; return `<div class="rv" style="--rc:${R.col};animation-delay:${i * .12}s"><div class="pt">${pimg(id)}</div><b>${H.name}</b><small style="color:${R.col}">${R.n}</small><span>+${v}</span></div>`; }).join('')}</div>
+  // quem completou os fragmentos entra na hora para a saga
+  const fresh = Object.keys(sum).filter(id => { const h = hs(id), need = RAR[HEROES[id].rar].need; if (h.lvl || h.sh < need) return false; h.sh -= need; h.lvl = 1; h.st = 1; if (S.team.length < teamSlots()) S.team.push(id); return true; });
+  dcount('recrutar', n); save(); dirty = true; Snd.chime(); if (fresh.length) { Snd.done(); say(`${HEROES[fresh[0]].name} entrou para a sua saga!`); }
+  openSheet(`<h2>${fresh.length ? 'Novo herói!' : 'Fragmentos recebidos!'}</h2><div class="reveal">${Object.entries(sum).map(([id, v], i) => { const H = HEROES[id], R = RAR[H.rar], h = hs(id), nw = fresh.includes(id); return `<div class="rv${nw ? ' new' : ''}" style="--rc:${R.col};animation-delay:${i * .12}s"><div class="pt">${pimg(id)}</div><b>${H.name}</b><small style="color:${R.col}">${nw ? 'NOVO HERÓI!' : R.n}</small><span>+${v}</span><small>${h.lvl ? (nw ? 'recrutado' : 'p/ estrelas') : `${h.sh}/${R.need}`}</small></div>`; }).join('')}</div>
+    <p class="sub">${fresh.length ? 'Ele já está na sua equipe (se houver vaga). ' : ''}Junte fragmentos de um herói (Comum 10, Raro 20, Épico 30, Lendário 50) e ele entra para a sua saga automaticamente.</p>
     <div class="actions"><button class="btn" data-a="heroes">Ver heróis</button><button class="btn ghost" data-a="tavern">Taverna</button></div>`);
 }
 
@@ -3578,7 +3584,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 20;
+const GAME_VERSION = 21;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -3601,4 +3607,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && !B && !CINE) { reloaded = true; save(); location.reload(); } });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); setInterval(() => r.update(), 5 * 60e3); }).catch(() => {}));
 }
-window.__vs = { startClanBoss, openClan, exportVila, packVila, unpackVila, startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { openTavern, openHeroes, openHero, startClanBoss, openClan, exportVila, packVila, unpackVila, startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
