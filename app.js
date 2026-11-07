@@ -29,14 +29,16 @@ const ICO = {
   carne: '<path d="M14 4c4 0 6 3 5 6s-4 5-7 5l-3 3a2 2 0 1 1-3-1l-1-1a2 2 0 1 1 1-3l3-3c0-3 2-6 5-6z" fill="#b5503a" stroke="#4a1a10" stroke-width="1.4"/><path d="M8 16l-2 2" stroke="#f4efe6" stroke-width="2.4" stroke-linecap="round"/><path d="M13 7q3 0 4 3" stroke="#e08a6e" stroke-width="1.3" fill="none"/>',
   couro: '<path d="M5 5q3 2 7 0q4 2 7 0q-1 3 0 6q-2 2 0 5q-3 0-4 3q-3-2-6 0q-1-3-4-3q2-3 0-5q1-3 0-6z" fill="#a8743f" stroke="#4a2c0f" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 9q4 3 8 0M8 14q4 3 8 0" stroke="#d6a26a" stroke-width="1.1" fill="none"/>',
   trofeu: '<path d="M12 20v-6M9 14h6" stroke="#6b4527" stroke-width="2.2" stroke-linecap="round"/><path d="M12 14c-3 0-5-2-6-6M6 8L4 4M6 8l3-3M12 14c3 0 5-2 6-6M18 8l2-4M18 8l-3-3" stroke="#e8d6a8" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="12" cy="13" r="2.2" fill="#8a5a2c"/>',
+  saga: '<rect x="5" y="4" width="14" height="16" rx="2" fill="#e8d6a8" stroke="#6b4a12" stroke-width="1.4"/><rect x="3" y="3" width="18" height="3.5" rx="1.7" fill="#a8743f" stroke="#4a2c0f" stroke-width="1.2"/><rect x="3" y="17.5" width="18" height="3.5" rx="1.7" fill="#a8743f" stroke="#4a2c0f" stroke-width="1.2"/><path d="M9 9l3 5 3-5M12 9v6" stroke="#8a3a2a" stroke-width="1.5" fill="none"/>',
+  mead: '<path d="M5 6c3-2 11-2 14 0l-2 13c-2 2-8 2-10 0z" fill="#e2b84a" stroke="#6b4a12" stroke-width="1.4"/><path d="M5 6c3 2 11 2 14 0" fill="#fff4cf" stroke="#6b4a12" stroke-width="1.2"/><path d="M19 9c3 0 3 6 0 6" stroke="#6b4a12" stroke-width="1.8" fill="none"/>',
   hammer: '<path d="M5 19l8-8" stroke="#b07a3a" stroke-width="3" stroke-linecap="round"/><path d="M11 5l6 6 2-2-6-6z" fill="#aeb7bc" stroke="#2c343a" stroke-width="1.3"/>'
 };
 document.querySelectorAll('svg[data-ico]').forEach(s => s.innerHTML = ICO[s.dataset.ico]);
-const icoSVG = k => `<svg viewBox="0 0 24 24">${ICO[k]}</svg>`;
+const icoSVG = k => k && k.startsWith('h:') ? `<svg viewBox="0 0 24 24"><path d="M12 2l8 6-3 12H7L4 8z" fill="${(typeof HEROES !== 'undefined' && HEROES[k.slice(2)] ? RAR[HEROES[k.slice(2)].rar].col : '#d9a441')}" stroke="#2b1a08" stroke-width="1.4"/><text x="12" y="16" text-anchor="middle" font-size="9" font-weight="800" fill="#2b1a08">${k.slice(2, 3).toUpperCase()}</text></svg>` : `<svg viewBox="0 0 24 24">${ICO[k] || ''}</svg>`;
 const RES = ['food', 'wood', 'stone', 'iron'];
 const RES_NAME = { food: 'Comida', wood: 'Madeira', stone: 'Pedra', iron: 'Ferro', ouro: 'Ouro', rubi: 'Rubi', diamante: 'Diamante',
-  leite: 'Leite', ovos: 'Ovos', carne: 'Carne', couro: 'Couro', trofeu: 'Troféu de alce', frutas: 'Frutas', legumes: 'Legumes', verduras: 'Verduras', runes: 'Runas', meal: 'Refeições' };
-const GEMS = ['ouro', 'rubi', 'diamante'], PANTRY = ['leite', 'ovos', 'frutas', 'legumes', 'verduras', 'carne'], TREAS = [...GEMS, 'couro', 'trofeu'];
+  leite: 'Leite', ovos: 'Ovos', saga: 'Pergaminhos de Saga', mead: 'Hidromel', carne: 'Carne', couro: 'Couro', trofeu: 'Troféu de alce', frutas: 'Frutas', legumes: 'Legumes', verduras: 'Verduras', runes: 'Runas', meal: 'Refeições' };
+const GEMS = ['ouro', 'rubi', 'diamante'], PANTRY = ['leite', 'ovos', 'frutas', 'legumes', 'verduras', 'carne'], TREAS = [...GEMS, 'couro', 'trofeu', 'saga', 'mead'];
 
 /* ========== Definições ========== */
 const MAXLV = 10;
@@ -59,6 +61,10 @@ const DEF = {
              desc: 'Cerca a vila pela praia e pelas florestas. Os draugr precisam derrubá-la antes de entrar. Até o nível 3 é uma paliçada de troncos; no 4 vira muralha de pedra; no 7 ganha torres de arqueiros.' },
   cabana:  { name: 'Cabana de Caça', size: 2, time: 14, cost: { wood: 180, food: 80 }, unlock: 3,
              desc: 'Os caçadores saem pelo portão leste até a clareira da floresta. Trazem carne para a despensa e couro para as armaduras do Ferreiro. Cuidado com os lobos.' },
+  taverna: { name: 'Taverna', size: 2, time: 16, cost: { wood: 200, food: 150 }, unlock: 2,
+             desc: 'Onde os heróis vikings se reúnem. Troque hidromel por fragmentos de heróis e recrute novos campeões.' },
+  runas:   { name: 'Círculo de Runas', size: 2, time: 20, cost: { stone: 260, wood: 120 }, unlock: 3,
+             desc: 'Pedras antigas onde os sábios estudam as runas. Pesquise melhorias para a economia, o exército, os heróis e a defesa.' },
   horta:   { name: 'Horta e Pomar', size: 2, time: 12, cost: { wood: 110, food: 60 }, unlock: 2,
              desc: 'Plante frutas, legumes e verduras nos canteiros. Elas crescem à vista e alimentam os trabalhadores. Cada nível libera novas plantas e mais canteiros.' },
   curral:  { name: 'Curral', size: 2, time: 14, cost: { wood: 160, stone: 50 }, unlock: 2,
@@ -83,6 +89,8 @@ const PLOTS = [
   { id: 'horta', type: 'horta', c: 3, r: 7 },
   { id: 'muralha', type: 'muralha', c: 7, r: 10 },
   { id: 'cabana', type: 'cabana', c: 12, r: 4 },
+  { id: 'taverna', type: 'taverna', c: 9, r: 4 },
+  { id: 'runas', type: 'runas', c: 5, r: 7 },
   { id: 'curral', type: 'curral', c: 12, r: 7 }
 ];
 const plotById = id => PLOTS.find(p => p.id === id);
@@ -96,12 +104,12 @@ const costFor = (type, L) => {
   if (L === 10) { out.rubi = 2 * m; out.diamante = 1 * m; }
   return out;
 };
-const timeFor = (type, L) => Math.round(DEF[type].time * Math.pow(1.6, L - 1) * (1 - relic('build')));
-const rateFor = (type, L) => L > 0 && DEF[type].prod ? DEF[type].rate * Math.pow(1.3, L - 1) * (1 + relic('prod')) : 0; // por hora
-const have = k => k === 'runes' ? S.runes : TREAS.includes(k) ? (S.gems[k] || 0) : PANTRY.includes(k) ? (S.pantry[k] || 0) : (S.res[k] || 0);
-function spend(c) { for (const k in c) { if (k === 'runes') S.runes -= c[k]; else if (TREAS.includes(k)) S.gems[k] -= c[k]; else if (PANTRY.includes(k)) S.pantry[k] -= c[k]; else S.res[k] -= c[k]; } }
+const timeFor = (type, L) => Math.round(DEF[type].time * Math.pow(1.6, L - 1) * (1 - relic('build')) * (1 - .04 * RS('build')));
+const rateFor = (type, L) => L > 0 && DEF[type].prod ? DEF[type].rate * Math.pow(1.3, L - 1) * (1 + relic('prod')) * (1 + .05 * RS('prod')) : 0; // por hora
+const have = k => k.startsWith('h:') ? hs(k.slice(2)).sh : k === 'runes' ? S.runes : TREAS.includes(k) ? (S.gems[k] || 0) : PANTRY.includes(k) ? (S.pantry[k] || 0) : (S.res[k] || 0);
+function spend(c) { for (const k in c) { if (k.startsWith('h:')) hs(k.slice(2)).sh -= c[k]; else if (k === 'runes') S.runes -= c[k]; else if (TREAS.includes(k)) S.gems[k] -= c[k]; else if (PANTRY.includes(k)) S.pantry[k] -= c[k]; else S.res[k] -= c[k]; } }
 function gain(k, v) { // soma respeitando o limite do armazém
-  if (k === 'runes') S.runes += v; else if (TREAS.includes(k)) S.gems[k] = (S.gems[k] || 0) + v;
+  if (k.startsWith('h:')) hs(k.slice(2)).sh += v; else if (k === 'runes') S.runes += v; else if (TREAS.includes(k)) S.gems[k] = (S.gems[k] || 0) + v;
   else if (PANTRY.includes(k)) S.pantry[k] = Math.min(pantryCap(), (S.pantry[k] || 0) + v);
   else { S.res[k] = Math.min(Math.max(S.res[k], capFor(k)), S.res[k] + v); S.stats[k] = (S.stats[k] || 0) + v; }
 }
@@ -118,7 +126,7 @@ const RELICS = [
 ];
 const GEM_RUNES = { ouro: 1, rubi: 5, diamante: 15 };
 function relic(k) { if (!S || !S.relics) return 0; return RELICS.reduce((a, r) => a + (S.relics[r.id] ? (r.fx[k] || 0) : 0), 0); }
-const capFor = r => 3000 + (S.b.armazem.lvl ? Math.round(3000 * Math.pow(1.45, S.b.armazem.lvl - 1)) : 0);
+const capFor = r => Math.round((3000 + (S.b.armazem.lvl ? Math.round(3000 * Math.pow(1.45, S.b.armazem.lvl - 1)) : 0)) * (1 + .1 * RS('cap')));
 const bufCap = (type, L) => rateFor(type, L) * 2; // guarda até 2h de produção
 const power = () => PLOTS.reduce((a, p) => a + (S.b[p.id] ? S.b[p.id].lvl * (p.type === 'salao' ? 120 : 35) : 0), 0)
   + Object.keys(TROOPS).reduce((a, k) => a + (S.army[k] || 0) * TROOPS[k].pow, 0) + (S.wave - 1) * 25;
@@ -137,15 +145,20 @@ const FOES = {
   warrior: { name: 'Draugr Guerreiro', pl: 'Draugr Guerreiros', model: 'Skeleton_Warrior', r: 'Skeleton_Axe', l: 'Skeleton_Shield_Small_A', hp: 150, dmg: 12, rate: 1.3, range: .9, speed: 1.2 },
   rogue:   { name: 'Draugr Ágil', pl: 'Draugr Ágeis', model: 'Skeleton_Rogue', r: 'Skeleton_Blade', hp: 75, dmg: 11, rate: .8, range: .9, speed: 2.2 },
   mage:    { name: 'Feiticeiro Draugr', pl: 'Feiticeiros Draugr', model: 'Skeleton_Mage', r: 'Skeleton_Staff', hp: 65, dmg: 15, rate: 1.8, range: 5, speed: 1.2, ranged: 'bolt' },
+  wolf:    { name: 'Lobo Sombrio', pl: 'Lobos Sombrios', model: 'Wolf', beast: true, h: .4, hp: 90, dmg: 11, rate: .8, range: .8, speed: 2.8 },
+  bigwolf: { name: 'Fenrir, o Lobo Gigante', pl: 'Lobos Gigantes', model: 'Wolf', beast: true, h: 1, hp: 2200, dmg: 40, rate: 1.3, range: 1.4, speed: 2.2, scale: .6 },
+  witch:   { name: 'Bruxa do Pântano', pl: 'Bruxas', model: 'Skeleton_Mage', r: 'Skeleton_Staff', hp: 1500, dmg: 38, rate: 1.6, range: 5.5, speed: 1.1, ranged: 'bolt', scale: .5 },
+  giant:   { name: 'Gigante de Gelo', pl: 'Gigantes', model: 'Skeleton_Warrior', r: 'Skeleton_Axe', l: 'Skeleton_Shield_Small_A', hp: 3200, dmg: 55, rate: 1.8, range: 1.6, speed: .9, scale: .72 },
+  hel:     { name: 'Guardião de Hel', pl: 'Guardiões', model: 'Skeleton_Rogue', r: 'Skeleton_Blade', hp: 3500, dmg: 55, rate: 1, range: 1.4, speed: 1.6, scale: .62 },
   boss:    { name: 'Rei Draugr', pl: 'Reis Draugr', model: 'Skeleton_Warrior', r: 'Skeleton_Axe', l: 'Skeleton_Shield_Small_A', hp: 1800, dmg: 35, rate: 1.6, range: 1.4, speed: 1.0, scale: .55 }
 };
 const MAXWAVE = 30;
-const armyCap = () => S.b.quartel.lvl ? 4 + 2 * S.b.quartel.lvl : 0;
+const armyCap = () => S.b.quartel.lvl ? 4 + 2 * S.b.quartel.lvl + 2 * RS('army') : 0;
 const armyCount = () => Object.values(S.army).reduce((a, b) => a + b, 0);
 const queued = () => S.train ? S.train.left : 0;
 const smithBonus = () => 1 + .1 * S.b.ferreiro.lvl;
-const troopHpF = () => smithBonus() * (1 + relic('hp')) * (1 + .05 * (S.armor || 0)), troopDmgF = () => smithBonus() * (1 + relic('dmg'));
-const towerDmg = L => Math.round(16 * Math.pow(1.25, L - 1));
+const troopHpF = () => smithBonus() * (1 + relic('hp')) * (1 + .05 * (S.armor || 0)) * (1 + .05 * RS('thp')), troopDmgF = () => smithBonus() * (1 + relic('dmg')) * (1 + .05 * RS('tdmg'));
+const towerDmg = L => Math.round(16 * Math.pow(1.25, L - 1) * (1 + .08 * RS('tower')));
 const heroStats = () => { const L = S.b.salao.lvl, f = 1 + relic('hero'); return { hp: (450 + 90 * L) * f, dmg: (28 + 6 * L) * f }; };
 function waveDef(w) {
   const n = Math.min(20, 3 + Math.round(w * .75)), list = [];
@@ -168,6 +181,9 @@ const MISSIONS = [
   { t: 'Colete comida na Fazenda', ok: () => S.stats.food > 0, r: { wood: 150 } },
   { t: 'Construa a Pedreira', ok: () => lv('pedreira') >= 1, r: { food: 150 } },
   { t: 'Melhore o Salão do Jarl ao nível 2', ok: () => lv('salao') >= 2, r: { runes: 20 } },
+  { t: 'Construa a Taverna', ok: () => lv('taverna') >= 1, r: { mead: 3 } },
+  { t: 'Recrute ou evolua um herói', ok: () => HERO_IDS.some(id => id !== 'gunnar' && hs(id).lvl >= 1) || hs('gunnar').lvl >= 3, r: { saga: 6 } },
+  { t: 'Vença a fase 1-4 da Saga', ok: () => S.camp.next >= 4, r: { mead: 2 } },
   { t: 'Construa o Quartel', ok: () => lv('quartel') >= 1, r: { food: 250 } },
   { t: 'Treine 3 Guerreiros no Quartel', ok: () => (S.stats.trained || 0) >= 3, r: { wood: 200 } },
   { t: 'Vença a Onda 1', ok: () => S.wave > 1, r: { runes: 20 } },
@@ -188,6 +204,9 @@ const MISSIONS = [
   { t: 'Mande os mineiros à montanha', ok: () => (S.stats.expMina || 0) >= 1, r: { wood: 300 } },
   { t: 'Encontre uma pedra preciosa', ok: () => !!S.stats.gemFound, r: { runes: 20 } },
   { t: 'Vença a Onda 3', ok: () => S.wave > 3, r: { runes: 20 } },
+  { t: 'Construa o Círculo de Runas', ok: () => lv('runas') >= 1, r: { stone: 400 } },
+  { t: 'Pesquise uma runa no Círculo', ok: () => Object.keys(S.research).length >= 1, r: { runes: 15 } },
+  { t: 'Complete o capítulo 1 da Saga', ok: () => S.camp.next >= 8, r: { mead: 3 } },
   { t: 'Construa a Mina de Ferro', ok: () => lv('mina') >= 1, r: { food: 500 } },
   { t: 'Melhore uma Fazenda ao nível 3', ok: () => Math.max(lv('faz1'), lv('faz2')) >= 3, r: { stone: 300 } },
   { t: 'Colete 500 de ferro', ok: () => S.stats.iron >= 500, r: { wood: 600 } },
@@ -226,11 +245,16 @@ if (!S.army) S.army = { war: 0, arc: 0, hus: 0 };
 if (S.music === undefined) S.music = true;
 if (S.voice === undefined) S.voice = true;
 if (S.bintro === undefined) S.bintro = true;
+if (!S.heroes) S.heroes = { gunnar: { sh: 0, lvl: 1, st: 1 } };
+if (!S.team) S.team = ['gunnar'];
+if (!S.research) S.research = {};
+if (S.rs === undefined) S.rs = null;
+if (!S.camp) S.camp = { next: 0, stars: {}, chest: {}, rep: { d: '', n: 0 } };
 if (!S.gfx) S.gfx = 'auto';
 if (!S.daily) S.daily = {};
 if (S.tut === undefined) S.tut = (S.mission > 3 || (S.b && S.b.salao && S.b.salao.lvl > 2)) ? 99 : 0;
 if (!S.gems) S.gems = { ouro: 0, rubi: 0, diamante: 0 };
-TREAS.forEach(k => { if (S.gems[k] === undefined) S.gems[k] = 0; });
+TREAS.forEach(k => { if (S.gems[k] === undefined) S.gems[k] = k === 'mead' ? 3 : 0; });
 if (!S.pantry) S.pantry = { leite: 0, ovos: 0, frutas: 0, legumes: 0, verduras: 0 };
 if (!S.exp) S.exp = { lenha: null, mina: null };
 if (S.exp.caca === undefined) S.exp.caca = null;
@@ -301,14 +325,14 @@ const MEAL_FOOD = 20; // sem despensa, cada refeição sai por 20 de comida
 const mealsHave = () => PANTRY.reduce((a, k) => a + Math.floor(S.pantry[k] || 0), 0);
 const varietyOk = () => PANTRY.filter(k => (S.pantry[k] || 0) >= 1).length >= 3;
 function expYield(k, n, s, fed) {
-  const min = s / 60, f = n * (fed ? 1.25 : 1) * (isWeekend() ? 1.5 : 1), e = EXP[k]; // base por viagem + por minuto (+50% no fim de semana)
+  const min = s / 60, f = n * (fed ? 1.25 : 1) * (isWeekend() ? 1.5 : 1) * (1 + .08 * RS('exp')) * (k === 'caca' ? 1 + .1 * RS('hunt') : 1), e = EXP[k]; // base por viagem + por minuto (+50% no fim de semana)
   if (k === 'lenha') return { wood: Math.round(f * (18 + min * e.rate) * Math.pow(1.25, S.b.serraria.lvl - 1)) };
   if (k === 'caca') { const h = Math.pow(1.2, Math.max(0, S.b.cabana.lvl - 1)) * (1 + relic('hunt')); return { carne: Math.max(1, Math.round(f * (3 + min * e.rate) * h)), couro: Math.max(1, Math.round(f * (1 + min * .8) * h)) }; }
   const out = { stone: Math.round(f * (14 + min * e.rate) * Math.pow(1.25, Math.max(0, S.b.pedreira.lvl - 1))) };
   if (S.b.mina.lvl) out.iron = Math.round(f * (4 + min * 4) * Math.pow(1.25, S.b.mina.lvl - 1));
   return out;
 }
-const gemChance = () => (1 + .1 * S.b.mina.lvl) * (1 + relic('gem'));
+const gemChance = () => (1 + .1 * S.b.mina.lvl) * (1 + relic('gem')) * (1 + .1 * RS('gem'));
 function rollGems(n, s) {
   const wm = n * s / 60, f = gemChance(), out = {};
   [['ouro', .05], ['rubi', .012], ['diamante', .004]].forEach(([g, p]) => { const e = Math.min(wm * p * f, 30); let c = Math.floor(e); if (Math.random() < e - c) c++; if (c) out[g] = c; });
@@ -334,6 +358,96 @@ const herd = () => { const L = S.b.curral.lvl; return L ? { galinha: Math.min(6,
 const herdRates = () => { const h = herd(); return { ovos: h.galinha * 5, leite: h.vaca * 4 + h.cabra * 3 }; }; // por hora
 const curCap = () => { const r = herdRates(); return { ovos: Math.max(6, r.ovos * 2), leite: Math.max(6, r.leite * 2) }; };
 
+/* ========== Heróis colecionáveis ========== */
+const RAR = { comum: { n: 'Comum', col: '#c9bfa8', need: 10 }, raro: { n: 'Raro', col: '#6fb3ff', need: 20 }, epico: { n: 'Épico', col: '#c08cff', need: 30 }, lend: { n: 'Lendário', col: '#f3b23a', need: 50 } };
+const HEROES = {
+  gunnar:  { name: 'Gunnar', tit: 'o Lenhador', rar: 'comum', model: 'Barbarian', r: 'axe_2handed', l: 'mug_full', hp: 420, dmg: 30, rate: 1.1, range: 1, speed: 2.4, sk: 'warcry', skn: 'Grito de Guerra', skd: 'Aliados próximos causam +30% de dano por 6 segundos.' },
+  erik:    { name: 'Erik', tit: 'o Ruivo', rar: 'comum', model: 'Ranger', l: 'crossbow_1handed', hp: 260, dmg: 26, rate: 1.2, range: 5.5, ranged: 'arrow', speed: 2.2, sk: 'boom', skn: 'Flecha Explosiva', skd: 'Uma flecha que explode e acerta todos em volta do alvo (dano 3x).' },
+  harald:  { name: 'Harald', tit: 'Dente-Azul', rar: 'raro', model: 'Knight', r: 'sword_2handed', hp: 620, dmg: 36, rate: 1.2, range: 1.1, speed: 2.3, sk: 'charge', skn: 'Investida', skd: 'Avança contra o draugr mais distante e derruba quem estiver no caminho (dano 2,5x).' },
+  leif:    { name: 'Leif', tit: 'a Sombra', rar: 'raro', model: 'Rogue', r: 'dagger', l: 'dagger', hp: 330, dmg: 40, rate: .7, range: .9, speed: 3, sk: 'backstab', skn: 'Golpe nas Sombras', skd: 'Some e reaparece atrás do inimigo mais fraco: dano 5x.' },
+  ingrid:  { name: 'Ingrid', tit: 'a Curandeira', rar: 'raro', model: 'Rogue_Hooded', r: 'wand', l: 'spellbook_open', hp: 300, dmg: 18, rate: 1.3, range: 4.5, ranged: 'orb', speed: 2.2, sk: 'heal', skn: 'Bênção de Eir', skd: 'Cura 30% da vida de todos os aliados próximos.' },
+  astrid:  { name: 'Astrid', tit: 'Flecha-Certeira', rar: 'epico', model: 'Ranger', l: 'bow_withString', hp: 380, dmg: 34, rate: 1, range: 6.5, ranged: 'arrow', speed: 2.3, sk: 'rain', skn: 'Chuva de Flechas', skd: 'Cobre uma área com flechas: dano 3x em todos os inimigos.' },
+  freydis: { name: 'Freydis', tit: 'Escudo-de-Ferro', rar: 'epico', model: 'Knight', r: 'sword_1handed', l: 'shield_spikes', hp: 900, dmg: 30, rate: 1.1, range: 1, speed: 2.2, sk: 'wall', skn: 'Muralha de Escudos', skd: 'Aliados próximos recebem metade do dano por 5 segundos.' },
+  ragnar:  { name: 'Ragnar', tit: 'Machado-Sangrento', rar: 'lend', model: 'Barbarian', r: 'axe_1handed', l: 'axe_1handed', hp: 800, dmg: 55, rate: .9, range: 1.1, speed: 2.6, sk: 'fury', skn: 'Fúria Berserker', skd: 'Gira os machados três vezes: dano 3x em todos ao redor.' },
+  sigrid:  { name: 'Sigrid', tit: 'a Vidente', rar: 'lend', model: 'Mage', r: 'staff', hp: 420, dmg: 40, rate: 1.4, range: 6, ranged: 'orb', speed: 2.1, sk: 'thunder', skn: 'Raio de Thor', skd: 'Um raio atinge o alvo e salta para mais 4 inimigos: dano 4x.' }
+};
+const HERO_IDS = Object.keys(HEROES);
+const hs = id => S.heroes[id] || (S.heroes[id] = { sh: 0, lvl: 0, st: 0 });
+const heroMaxLv = st => 10 * st;
+const heroLvCost = (id, l) => ({ saga: Math.ceil(l * 1.5 * (1 - .08 * RS('hxp'))), food: Math.round(80 * l * Math.pow(1.12, l) * (1 - .08 * RS('hxp')) / 10) * 10 });
+const heroStarCost = (id, st) => RAR[HEROES[id].rar].need * st;
+function hStats(id) {
+  const H = HEROES[id], h = hs(id), f = (1 + .07 * (h.lvl - 1)) * (1 + .18 * (h.st - 1));
+  return { hp: Math.round(H.hp * f * (1 + .06 * RS('hhp'))), dmg: Math.round(H.dmg * f * (1 + .06 * RS('hdmg'))), cd: 11 * (1 - .06 * RS('hcd')) };
+}
+const teamSlots = () => Math.min(3, 1 + Math.floor(S.b.salao.lvl / 3));
+const heroPower = id => { const h = hs(id); if (!h.lvl) return 0; const s = hStats(id); return Math.round((s.hp / 10 + s.dmg * 2)); };
+
+/* recrutamento na taverna (com hidromel ganho jogando, nunca vendido) */
+const RECRUIT_ODDS = [['lend', .04], ['epico', .14], ['raro', .32], ['comum', .5]];
+function recruitOnce(force) {
+  let r = Math.random(), rar = 'comum';
+  if (force) rar = Math.random() < .2 ? 'lend' : 'epico';
+  else for (const [k, p] of RECRUIT_ODDS) { if (r < p) { rar = k; break; } r -= p; }
+  const pool = HERO_IDS.filter(id => HEROES[id].rar === rar), id = pool[Math.floor(Math.random() * pool.length)];
+  const n = { comum: 4, raro: 3, epico: 3, lend: 2 }[rar] + Math.floor(Math.random() * 2);
+  hs(id).sh += n; return { id, n, rar };
+}
+
+/* ========== Círculo de Runas (pesquisa) ========== */
+const TECH = [
+  { br: 'Economia', list: [['prod', 'Colheita Farta', '+5% produção'], ['cap', 'Celeiros', '+10% capacidade do armazém'], ['build', 'Mestres Construtores', '−4% tempo de obra'], ['exp', 'Trabalho Duro', '+8% nas expedições']] },
+  { br: 'Militar', list: [['tdmg', 'Lâminas Afiadas', '+5% dano das tropas'], ['thp', 'Cotas de Malha', '+5% vida das tropas'], ['train', 'Treino Intenso', '−8% tempo de treino'], ['army', 'Grande Exército', '+2 vagas no exército']] },
+  { br: 'Heróis', list: [['hdmg', 'Sangue de Odin', '+6% dano dos heróis'], ['hhp', 'Pele de Urso', '+6% vida dos heróis'], ['hcd', 'Runas Rápidas', '−6% recarga das habilidades'], ['hxp', 'Sagas Antigas', '−8% custo de nível dos heróis']] },
+  { br: 'Defesa', list: [['wall', 'Pedras Rúnicas', '+10% vida da muralha'], ['tower', 'Arqueiros de Elite', '+8% dano das torres e do castelo'], ['gem', 'Olho do Mineiro', '+10% chance de gemas'], ['hunt', 'Rastreadores', '+10% na caça']] }
+];
+const TECH_BY = {}; TECH.forEach((b, bi) => b.list.forEach(([k, n, d], i) => TECH_BY[k] = { k, n, d, bi, i }));
+function RS(k) { return S && S.research ? (S.research[k] || 0) : 0; }
+const techCost = (k, l) => { const t = TECH_BY[k], f = Math.pow(1.75, l), base = [{ food: 200, wood: 260 }, { food: 180, wood: 120, iron: 60 }, { food: 260, stone: 160 }, { wood: 160, stone: 240 }][t.bi]; const o = {}; for (const r in base) o[r] = Math.round(base[r] * f / 10) * 10; if (l >= 3) o.runes = 5 * (l - 2); return o; };
+const techTime = l => Math.round(60 * Math.pow(2.2, l));
+const techReq = l => 2 * l + 1; // nível do Círculo pedido para pesquisar o nível l+1
+
+/* ========== Saga (campanha em capítulos) ========== */
+const CHAPTERS = [
+  { name: 'Praias de Sangue', fog: '#9db9c8', sky: '#9db9c8', light: '#ffffff', pool: ['minion', 'minion', 'warrior'], boss: 'boss', hero: 'harald', props: 'beach' },
+  { name: 'Floresta dos Lobos', fog: '#5f7a5a', sky: '#6b8566', light: '#d9f0c8', pool: ['wolf', 'minion', 'rogue', 'wolf'], boss: 'bigwolf', hero: 'leif', props: 'forest' },
+  { name: 'Pântano dos Afogados', fog: '#4f6a4a', sky: '#56704f', light: '#bfe0a8', pool: ['minion', 'mage', 'warrior', 'rogue'], boss: 'witch', hero: 'ingrid', props: 'swamp' },
+  { name: 'Montanhas Geladas', fog: '#c8d6e4', sky: '#d4e0ec', light: '#e0ecff', pool: ['warrior', 'warrior', 'mage', 'wolf'], boss: 'giant', hero: 'freydis', props: 'rocks' },
+  { name: 'Ruínas de Niflheim', fog: '#4a4460', sky: '#4f4868', light: '#c8b8ff', pool: ['rogue', 'mage', 'warrior', 'minion'], boss: 'witch', hero: 'astrid', props: 'ruins' },
+  { name: 'Portões de Hel', fog: '#5a2a24', sky: '#6a2c22', light: '#ffb8a0', pool: ['warrior', 'rogue', 'mage', 'wolf'], boss: 'hel', hero: 'ragnar', props: 'ruins' }
+];
+const STAGES = 8, campIdx = (c, s) => c * STAGES + s;
+function stageDef(c, s) {
+  const g = campIdx(c, s), C = CHAPTERS[c], n = Math.min(16, 5 + Math.round(g * .25) + (s === 7 ? 0 : 0)), list = [];
+  if (s === 7 || s === 3) list.push(s === 7 ? C.boss : C.pool[2]);
+  let k = g * 13 + 5; while (list.length < n) { k = (k * 31 + 11) % 97; list.push(C.pool[k % C.pool.length]); }
+  return { list, lvl: Math.pow(1.058, g) * .95, boss: s === 7 };
+}
+function stageReward(c, s, first) {
+  if (!first) return { food: 150 + 60 * c, wood: 150 + 60 * c, saga: 1 };
+  const r = { saga: 2 + c, runes: 4 + c * 2, food: 200 * (c + 1), wood: 200 * (c + 1) };
+  if (s % 2 === 1) r.mead = 1; if (s === 7) { r.mead = 3; r['h:' + CHAPTERS[c].hero] = 10; } else if (s % 3 === 2) r['h:' + CHAPTERS[c].hero] = 3;
+  if (c >= 1) r.iron = 80 * c;
+  return r;
+}
+const campStars = () => Object.values(S.camp.stars).reduce((a, b) => a + b, 0);
+const chapStars = c => { let t = 0; for (let s = 0; s < STAGES; s++) t += S.camp.stars[campIdx(c, s)] || 0; return t; };
+const CHAP_CHEST = c => ({ mead: 5, runes: 20 + c * 10, ['h:' + CHAPTERS[c].hero]: 15 });
+
+/* ========== Eventos semanais ========== */
+const EVENTS = [
+  { id: 'construtor', name: 'Semana do Construtor', desc: 'Pontos ao iniciar obras e pesquisas.', pts: { obras: 30, pesquisa: 50 } },
+  { id: 'cacada', name: 'Grande Caçada', desc: 'Pontos por expedições: caça, lenha e mineração.', pts: { exp_caca: 45, exp_lenha: 15, exp_mina: 25 } },
+  { id: 'furia', name: 'Fúria dos Draugr', desc: 'Pontos por ondas e fases da Saga vencidas.', pts: { ondas: 70, saga: 45 } },
+  { id: 'freyr', name: 'Bênção de Freyr', desc: 'Pontos por colheitas, curral e coletas.', pts: { colher: 30, curral: 25, coletar: 6 } }
+];
+const EV_TIERS = [[100, { mead: 1, runes: 10 }], [300, { saga: 6, mead: 1 }], [600, { 'h:astrid': 6, runes: 15 }], [1000, { mead: 3, ouro: 2 }], [1600, { 'h:sigrid': 10, runes: 40 }]];
+const weekNo = () => Math.floor((Date.now() / 864e5 + 3) / 7); // semanas começando na segunda
+const curEvent = () => EVENTS[weekNo() % EVENTS.length];
+const evEndsIn = () => ((weekNo() + 1) * 7 - 3) * 864e5 - Date.now();
+function evState() { const w = weekNo(); if (!S.ev || S.ev.w !== w) S.ev = { w, pts: 0, got: [] }; return S.ev; }
+function evAdd(k, n = 1) { const E = curEvent(), p = E.pts[k]; if (!p) return; const st = evState(); st.pts += p * n; }
+
 /* ========== Tempo e produção ========== */
 function advance(now) {
   let dt = Math.min(now - S.last, 8 * 3600e3); if (dt < 0) dt = 0;
@@ -353,6 +467,7 @@ function advance(now) {
     while (T.left > 0 && now >= T.next) { S.army[T.type]++; S.stats.trained = (S.stats.trained || 0) + 1; T.left--; T.next += T.per * 1000; trainedNow++; }
     if (!T.left) S.train = null;
   }
+  if (S.rs && now >= S.rs.end) { S.research[S.rs.k] = (S.research[S.rs.k] || 0) + 1; finished.push('rs:' + S.rs.k); S.rs = null; }
   if (S.b.curral.lvl) { const r = herdRates(), c = curCap(); S.cur.ovos = Math.min(c.ovos, S.cur.ovos + r.ovos * dt / 3600e3); S.cur.leite = Math.min(c.leite, S.cur.leite + r.leite * dt / 3600e3); }
   S.last = now;
 }
@@ -410,7 +525,7 @@ function train(type, n) {
   const c = {}; for (const k in t.cost) c[k] = t.cost[k] * n;
   if (!canAfford(c)) { toast('Faltam recursos'); Snd.no(); return; }
   spend(c);
-  dcount('treinar', n); if (S.train) S.train.left += n; else S.train = { type, left: n, per: t.time, next: Date.now() + t.time * 1000 };
+  dcount('treinar', n); const per = t.time * (1 - .08 * RS('train')); if (S.train) S.train.left += n; else S.train = { type, left: n, per, next: Date.now() + per * 1000 };
   Snd.build(); save(); dirty = true; renderSheet();
 }
 function speedTrain() {
@@ -466,7 +581,7 @@ sea.rotation.x = -Math.PI / 2; sea.position.y = -.22; sea.receiveShadow = true; 
 
 const cam = { x: 0, z: 3, d: 26, pitch: .95 };
 function placeCamera() {
-  cam.d = Math.max(12, Math.min(55, cam.d)); cam.x = Math.max(-18, Math.min(18, cam.x)); cam.z = Math.max(-10, Math.min(14, cam.z));
+  cam.d = Math.max(12, Math.min(55, cam.d)); cam.x = Math.max(CAMB.x0, Math.min(CAMB.x1, cam.x)); cam.z = Math.max(CAMB.z0, Math.min(CAMB.z1, cam.z));
   camera.position.set(cam.x, Math.sin(cam.pitch) * cam.d, cam.z + Math.cos(cam.pitch) * cam.d);
   camera.lookAt(cam.x, 0, cam.z);
   sun.target.position.set(cam.x, 0, cam.z); sun.position.set(cam.x - 18, 32, cam.z + 14);
@@ -489,8 +604,8 @@ rock_single_A rock_single_C rock_single_E building_castle_red building_grain bui
 building_market_red building_barracks_red building_blacksmith_red building_tower_A_red building_home_A_red building_home_B_red building_well_red
 building_tavern_red building_dirt building_stage_A building_stage_B building_stage_C building_scaffolding flag_red barrel crate_A_big sack
 resource_lumber resource_stone wheelbarrow tent weaponrack cloud_big cloud_small building_tower_B_red building_destroyed
-wall_straight wall_straight_gate axe_1handed axe_2handed sword_1handed shield_round_barbarian shield_round_color bow_withString target`.split(/\s+/);
-const CHARS = ['Barbarian', 'Rogue', 'Ranger', 'Knight', 'Rogue_Hooded', 'Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage'];
+dagger staff wand crossbow_1handed sword_2handed shield_spikes spellbook_open quiver mug_full wall_straight wall_straight_gate axe_1handed axe_2handed sword_1handed shield_round_barbarian shield_round_color bow_withString target`.split(/\s+/);
+const CHARS = ['Barbarian', 'Rogue', 'Ranger', 'Knight', 'Rogue_Hooded', 'Mage', 'Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage'];
 const CHAR_GLTF = ['Skeleton_Axe', 'Skeleton_Blade', 'Skeleton_Shield_Small_A', 'Skeleton_Staff'];
 const ANIMS = ['Rig_Medium_MovementBasic', 'Rig_Medium_General'];
 // primeiro o essencial da vila; draugr, animais e plantas carregam depois, sem travar a abertura
@@ -525,7 +640,7 @@ function instanced(name, mats, cast) {
 let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const plotAt = new Set(PLOTS.map(p => p.c + ',' + p.r));
 const DECOR_HOMES = [
-  { c: 8, r: 6, m: 'building_home_A_red', lv: 2 }, { c: 6, r: 6, m: 'building_home_B_red', lv: 3 }, { c: 9, r: 4, m: 'building_tavern_red', lv: 4 },
+  { c: 8, r: 6, m: 'building_home_A_red', lv: 2 }, { c: 6, r: 6, m: 'building_home_B_red', lv: 3 }, 
   { c: 8, r: 4, m: 'building_well_red', lv: 5 }, { c: 5, r: 5, m: 'building_home_A_red', lv: 6 }, { c: 9, r: 7, m: 'building_home_B_red', lv: 7 },
   { c: 12, r: 5, m: 'building_home_A_red', lv: 8 }, { c: 5, r: 3, m: 'building_home_B_red', lv: 9 }];
 DECOR_HOMES.forEach(h => plotAt.add(h.c + ',' + h.r));
@@ -554,7 +669,7 @@ function buildTerrain() {
 
 /* ---------- prédios ---------- */
 const plotGroups = {};
-const PLOT_H = { cabana: 1.2, muralha: 1.3, horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
+const PLOT_H = { taverna: 1.8, runas: 1.2, cabana: 1.2, muralha: 1.3, horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
 function put(g, n, x = 0, z = 0, rot = 0, s = 1) { const o = model(n, s); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); return o; }
 function refreshPlot(p) {
   let g = plotGroups[p.id];
@@ -586,6 +701,12 @@ function refreshPlot(p) {
       rack.add(mesh(new THREE.CylinderGeometry(.025, .025, .45, 5), '#5c3d22', 0, .5, 0)); rack.children[2].rotation.z = Math.PI / 2;
       const hide = mesh(new THREE.BoxGeometry(.32, .3, .02), '#a8743f', 0, .32, .03); rack.add(hide); g.add(rack);
       { const ant = new THREE.Group(); ant.position.set(0, .95, .55); ant.scale.setScalar(tier >= 2 ? 1.5 : 1.1); [-1, 1].forEach(sd => { const b = mesh(new THREE.CylinderGeometry(.015, .02, .3, 4), '#e8d6a8', sd * .1, .12, 0); b.rotation.z = -sd * .6; ant.add(b); const b2 = mesh(new THREE.CylinderGeometry(.012, .015, .15, 4), '#e8d6a8', sd * .2, .22, 0); b2.rotation.z = sd * .3; ant.add(b2); }); g.add(ant); }
+      break; }
+    case 'taverna': put(g, 'building_tavern_red'); put(g, 'barrel', -.75, .55, 0, .65); if (tier >= 2) put(g, 'barrel', .75, .6, .4, .6); if (tier >= 3) put(g, 'flag_red', .6, 1.2, -.3, 1.4); break;
+    case 'runas': {
+      const n = 6 + (tier - 1) * 2, glow = new THREE.MeshBasicMaterial({ color: '#b59cff' });
+      for (let i = 0; i < n; i++) { const a = i / n * TAU, st = mesh(new THREE.BoxGeometry(.2, .55 + (i % 2) * .15, .12), '#868e84', Math.cos(a) * .72, .3, Math.sin(a) * .72); st.rotation.y = -a; g.add(st); const r = new THREE.Mesh(new THREE.PlaneGeometry(.08, .2), glow); r.position.set(Math.cos(a) * .64, .35, Math.sin(a) * .64); r.rotation.y = -a + Math.PI / 2; g.add(r); }
+      g.add(mesh(new THREE.CylinderGeometry(.25, .3, .25, 8), '#6d7468', 0, .12, 0)); const orb = new THREE.Mesh(new THREE.OctahedronGeometry(.13), glow); orb.position.y = .45; orb.name = 'orb'; g.add(orb);
       break; }
     case 'quartel': put(g, 'building_barracks_red'); if (tier >= 2) put(g, 'weaponrack', -.65, .55, .4, .8); if (tier >= 3) put(g, 'target', .7, .5, -.5, .7); break;
     case 'ferreiro': put(g, 'building_blacksmith_red'); if (tier >= 2) put(g, 'barrel', .65, .55, 0, .7); break;
@@ -827,16 +948,17 @@ function burstAt(x, y, z, col, n = 10, sp = .04) {
 /* projéteis */
 const arrowGeo = new THREE.CylinderGeometry(.02, .02, .55, 4).rotateX(Math.PI / 2);
 const arrowMat = new THREE.MeshBasicMaterial({ color: '#3a2412' });
-const boltGeo = new THREE.SphereGeometry(.13, 8, 6), boltMat = new THREE.MeshBasicMaterial({ color: '#8dffb8' });
+const boltGeo = new THREE.SphereGeometry(.13, 8, 6), boltMat = new THREE.MeshBasicMaterial({ color: '#8dffb8' }), orbMat = new THREE.MeshBasicMaterial({ color: '#ffe48a' });
 function shoot(kind, sx, sy, sz, target, dmg, side, aoe = 0) {
   let m;
   if (kind === 'arrow') m = new THREE.Mesh(arrowGeo, arrowMat);
+  else if (kind === 'orb') m = new THREE.Mesh(boltGeo, orbMat);
   else if (kind === 'bolt') m = new THREE.Mesh(boltGeo, boltMat);
   else { m = G.axe_1handed.scene.clone(true); m.scale.setScalar(.6); }
   m.position.set(sx, sy, sz); scene.add(m);
   const [tx, tz] = posOf(target), d = Math.hypot(tx - sx, tz - sz);
-  B.proj.push({ m, kind, sx, sy, sz, tx, tz, target, t: 0, dur: Math.max(.25, d / (kind === 'axe' ? 11 : 14)), arc: kind === 'bolt' ? .3 : Math.min(2, d * .18), dmg, side, aoe });
-  if (kind !== 'bolt') Snd.shoot();
+  B.proj.push({ m, kind, sx, sy, sz, tx, tz, target, t: 0, dur: Math.max(.25, d / (kind === 'axe' ? 11 : 14)), arc: kind === 'bolt' || kind === 'orb' ? .3 : Math.min(2, d * .18), dmg, side, aoe });
+  if (kind === 'arrow' || kind === 'axe') Snd.shoot();
 }
 
 /* alvos: unidades ou prédios */
@@ -845,17 +967,20 @@ const alive = t => t && (t.isB ? t.hp > 0 : !t.dead && t.on);
 const dist2 = (a, b) => { const [ax, az] = posOf(a), [bx, bz] = posOf(b); return Math.hypot(ax - bx, az - bz); };
 
 function mkUnit(side, kind, x, z) {
-  const hero = kind === 'hero', D = hero ? HERO : kind === 'dog' ? DOG : side === 'ally' ? TROOPS[kind] : FOES[kind];
+  const hero = kind === 'hero', D = hero ? HERO : kind === 'dog' ? DOG : kind.startsWith('h_') ? heroUnitDef(kind.slice(2)) : side === 'ally' ? TROOPS[kind] : FOES[kind];
   const w = B.wave, scale = D.scale || .3;
   const c = D.beast ? mkBeast(D.model, D.h) : mkChar(D.model, scale, D.r, D.l);
   c.o.position.set(x, 0, z); c.o.visible = false; scene.add(c.o);
   let hp, dmg;
   if (hero) { const h = heroStats(); hp = h.hp; dmg = h.dmg; const ring = new THREE.Mesh(ringGeo, heroRingMat); ring.position.y = .05; ring.scale.setScalar(1 / scale * .3 * 2.6); c.o.add(ring); }
+  else if (D.isHero) { hp = D.hp; dmg = D.dmg; }
   else if (side === 'ally') { hp = D.hp * troopHpF() * (D.beast ? 1 : 1); dmg = D.dmg * troopDmgF(); }
+  else if (B.mode === 'camp') { hp = D.hp * B.lvlF; dmg = D.dmg * Math.pow(B.lvlF, .8); }
   else { hp = D.hp * Math.pow(1.08, w - 1); dmg = D.dmg * Math.pow(1.05, w - 1); }
   const u = Object.assign(c, { side, kind, D, hp, max: hp, dmg, rate: D.rate, range: D.range, speed: D.speed, ranged: D.ranged,
     rad: scale / .3 * .3, cd: Math.random() * .5, busy: 0, pend: null, target: null, rt: 0, dead: false, on: false, deadT: 0,
-    bar: mkBar(hero ? 'hero' : side, hero ? .9 : kind === 'boss' ? 1.4 : .6), barY: (kind === 'boss' ? 1.55 : hero ? 1.15 : .95) });
+    bar: mkBar(hero || D.isHero ? 'hero' : side, hero ? .9 : D.isHero ? .75 : (D.scale || .3) > .45 ? 1.4 : .6), barY: ((D.scale || .3) > .45 ? 1.55 + ((D.scale || .3) - .55) * 2 : hero ? 1.15 : D.isHero ? 1.05 : .95) });
+  if (D.isHero) { u.sk = D.sk; u.skMax = D.cd; u.skCd = D.cd * .4; }
   u.bs = c.o.scale.x; if (side === 'ally' && !D.beast) addFace(u);
   B.units.push(u); return u;
 }
@@ -873,6 +998,7 @@ function hurt(t, d) {
     if (t.hp <= 0) { Snd.crash(); burstAt(t.x, 1, t.z, '#5b4a3a', 26, .07); if (t.id === 'salao') endBattle(false); }
     return;
   }
+  if (t.shieldT > 0) d *= .5;
   t.hp -= d; burstAt(t.o.position.x, .5, t.o.position.z, t.side === 'enemy' ? '#d8d2c0' : '#b02a1e', 4, .025); Snd.hit();
   dmgNum(t.o.position.x, t.barY + .15, t.o.position.z, d, t.side === 'enemy' ? '#fff1c2' : '#ff6a5a', d >= 60); t.sq = .14;
   if (t.hp <= 0) { die(t); return; }
@@ -882,7 +1008,8 @@ function hurt(t, d) {
 function die(u) {
   u.dead = true; u.pend = null; anim(u, 'die'); if (u.face) setFace(u, 'hurt'); u.bar.bg.visible = u.bar.fg.visible = false; Snd.die();
   if (u.side === 'enemy') B.killed++;
-  if (u.kind === 'hero') { B.heroDown = 8; toast('O Jarl caiu! Ele volta em 8 segundos'); }
+  if (u.kind === 'hero') { if (B.mode === 'camp') { B.heroDown = 1e9; toast('O Jarl caiu!'); } else { B.heroDown = 8; toast('O Jarl caiu! Ele volta em 8 segundos'); } }
+  if (u.D.isHero) toast(`${u.D.name} caiu!`);
 }
 
 function startBattle() {
@@ -913,6 +1040,7 @@ function startBattle() {
   // herói
   const [hx, hz] = hexPos(7, 5);
   B.hero = mkUnit('ally', 'hero', hx, hz + 1.6); activate(B.hero);
+  S.team.forEach((id, i) => { const u = mkUnit('ally', 'h_' + id, hx - .9 + i * .9, hz + 2.4); u.spawnAt = .2 + i * .25; B.queue.push(u); });
   for (let i = 0; i < herd().cao; i++) { const [px, pz] = penCenter(), u = mkUnit('ally', 'dog', px - .5 + i * .5, pz + 1.2); u.spawnAt = .2 + i * .3; B.queue.push(u); }
   herdObjs.forEach(a => { if (a.kind === 'cao') a.o.visible = false; });
   // tropas saem do quartel
@@ -949,6 +1077,7 @@ function chooseTarget(u) {
   } else {
     B.units.forEach(t => { if (t.side === 'ally') { const d = dist2(u, t); if (d < 3.2) consider(t); } });
     if (!best) B.blds.forEach(t => consider(t, t.id === 'salao' ? -2 : 0));
+    if (!best && B.mode === 'camp') B.units.forEach(t => { if (t.side === 'ally') consider(t); });
   }
   return best;
 }
@@ -973,6 +1102,7 @@ function stepUnit(u, dt) {
     return;
   }
   if (!u.on) return;
+  if (stepHeroExtras(u, dt)) return;
   u.cd -= dt;
   if (u.pend) {
     u.pend.t -= dt;
@@ -980,8 +1110,8 @@ function stepUnit(u, dt) {
       const t = u.pend.target; u.pend = null;
       if (alive(t)) {
         const p = u.o.position;
-        if (u.ranged) shoot(u.ranged, p.x, .7, p.z, t, u.dmg, u.side);
-        else if (dist2(u, t) <= u.range + (t.rad || .3) + .6) hurt(t, u.dmg);
+        if (u.ranged) shoot(u.ranged, p.x, .7, p.z, t, u.dmg * dmgMul(u), u.side);
+        else if (dist2(u, t) <= u.range + (t.rad || .3) + .6) hurt(t, u.dmg * dmgMul(u));
       }
     }
   }
@@ -996,7 +1126,7 @@ function stepUnit(u, dt) {
   if (u.side === 'enemy' && t && !t.isW) { const w = wallTarget(u); if (w && !(t.side === 'ally' && outsideOf(u.wside, ...posOf(t)))) t = w; }
   if (!t) {
     if (u.side === 'ally' && u.kind !== 'hero') { // espera em frente ao Salão
-      const i = B.units.indexOf(u); if (moveToward(u, 1.5 + (i % 5) * .6 - 1.2, 3.2 + Math.floor(i / 5) % 3 * .6, dt, .2)) anim(u, 'idle');
+      const i = B.units.indexOf(u), [rx, rz] = B.rally || [1.5, 3.2]; if (moveToward(u, rx + (i % 5) * .6 - 1.2, rz + Math.floor(i / 5) % 3 * .6, dt, .2)) anim(u, 'idle');
     } else anim(u, 'idle');
     return;
   }
@@ -1009,7 +1139,8 @@ function separate() {
     const a = L[i].o.position, b = L[j].o.position, dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz), m = (L[i].rad + L[j].rad) * 1.25;
     if (d > 0 && d < m) { const push = (m - d) / 2, nx = dx / d * push, nz = dz / d * push; a.x -= nx; a.z -= nz; b.x += nx; b.z += nz; }
   }
-  L.forEach(u => { const p = u.o.position; if (u.on && u.kind !== 'boss') { p.x = Math.max(-17, Math.min(17.5, p.x)); p.z = Math.max(-9.5, Math.min(11.5, p.z)); }
+  const Bd = B.bounds || { x0: -17, x1: 17.5, z0: -9.5, z1: 11.5 };
+  L.forEach(u => { const p = u.o.position; if (u.on && u.kind !== 'boss') { p.x = Math.max(Bd.x0, Math.min(Bd.x1, p.x)); p.z = Math.max(Bd.z0, Math.min(Bd.z1, p.z)); }
     const k = u.wside; if (k && B.walls && B.walls[k].hp > 0) { if (k === 's') p.z = Math.max(p.z, WALL.s.v + .45); else if (k === 'e') p.x = Math.max(p.x, WALL.e.v + .45); else p.x = Math.min(p.x, WALL.w.v - .45); } });
 }
 function stepBattle(dt) {
@@ -1023,6 +1154,7 @@ function stepBattle(dt) {
   dt *= B.slow || 1;
   B.t += dt;
   stepDmg(dt);
+  if (B.later && B.later.length) for (let i = B.later.length - 1; i >= 0; i--) { const l = B.later[i]; if ((l.t -= dt) <= 0) { B.later.splice(i, 1); if (!B.over) l.fn(); } }
   // drakkar inimigo chega à praia
   if (B.ship) { const k = Math.min(1, B.t / 5); [B.ship].concat(B.extraShips || []).forEach((sh, i) => { const dz = sh.userData.dz || 0; sh.position.z = 34 + dz - (34 - 12.6) * (1 - Math.pow(1 - k, 2)); sh.position.y = -.05 + Math.sin(B.t * 1.4 + i) * .05; sh.rotation.z = Math.sin(B.t + i) * .03; sh.userData.update(B.t, dt, k < 1); }); }
   B.queue = B.queue.filter(u => { if (B.t >= u.spawnAt) { activate(u, u.rise); return false; } return true; });
@@ -1038,6 +1170,7 @@ function stepBattle(dt) {
   // projéteis
   for (let i = B.proj.length - 1; i >= 0; i--) {
     const pr = B.proj[i]; pr.t += dt / pr.dur;
+    if (pr.fx) { pr.m.material.opacity = Math.max(0, 1 - pr.t); if (pr.m.scale) pr.m.scale.multiplyScalar(1 + dt * .4); if (pr.t >= 1) { scene.remove(pr.m); B.proj.splice(i, 1); } continue; }
     if (alive(pr.target)) [pr.tx, pr.tz] = posOf(pr.target);
     const k = Math.min(1, pr.t), x = pr.sx + (pr.tx - pr.sx) * k, z = pr.sz + (pr.tz - pr.sz) * k, y = pr.sy + (.5 - pr.sy) * k + pr.arc * 4 * k * (1 - k);
     if (pr.kind === 'arrow') pr.m.lookAt(x + (x - pr.m.position.x), y + (y - pr.m.position.y), z + (z - pr.m.position.z));
@@ -1051,7 +1184,7 @@ function stepBattle(dt) {
   }
   // o Jarl volta
   const h = B.hero;
-  if (h.dead && (B.heroDown -= dt) <= 0) {
+  if (h.dead && B.mode !== 'camp' && (B.heroDown -= dt) <= 0) {
     const [hx, hz] = hexPos(7, 5); h.dead = false; h.hp = h.max; h.deadT = 0; h.o.position.set(hx, 0, hz + 1.6); if (!h.o.parent) scene.add(h.o);
     anim(h, 'rise'); h.busy = 1.3; burstAt(hx, .5, hz + 1.6, '#f3d27a', 20); B.cmd = null;
   }
@@ -1062,13 +1195,14 @@ function stepBattle(dt) {
   if (B.mark) { B.mark.material.opacity -= dt * 1.2; B.mark.scale.multiplyScalar(1 + dt * .6); if (B.mark.material.opacity <= 0) { scene.remove(B.mark); B.mark = null; } }
   // fim?
   if (!B.over && !B.queue.some(u => u.side === 'enemy') && !B.units.some(u => u.side === 'enemy' && !u.dead)) { B.endT += dt; if (B.endT > 1.2) endBattle(true); }
+  if (!B.over && B.mode === 'camp' && !B.queue.some(u => u.side === 'ally') && !B.units.some(u => u.side === 'ally' && u.on && !u.dead)) endBattle(false);
   renderBHUD();
 }
 function renderBHUD() {
   const hall = B.blds.find(t => t.id === 'salao'), h = B.hero;
   $('#bFoes').style.width = (100 - B.killed / B.total * 100) + '%'; $('#bFoesT').textContent = `${B.total - B.killed} draugr restantes`;
-  $('#bHall').style.width = Math.max(0, hall.hp / hall.max * 100) + '%';
-  $('#bHero').style.width = (h.dead ? 0 : h.hp / h.max * 100) + '%'; $('#bHeroT').textContent = h.dead ? `volta em ${Math.ceil(B.heroDown)}s` : `${Math.ceil(h.hp)} / ${Math.round(h.max)}`;
+  if (hall) $('#bHall').style.width = Math.max(0, hall.hp / hall.max * 100) + '%';
+  $('#bHero').style.width = (h.dead ? 0 : h.hp / h.max * 100) + '%'; $('#bHeroT').textContent = h.dead ? (B.mode === 'camp' ? 'caído' : `volta em ${Math.ceil(B.heroDown)}s`) : `${Math.ceil(h.hp)} / ${Math.round(h.max)}`;
   const sk = $('#btnSkill'); sk.disabled = B.skillCd > 0 || h.dead; $('#bSkillCd').style.height = (B.skillCd / 8 * 100) + '%';
 }
 function heroSkill() {
@@ -1084,13 +1218,14 @@ function moveHero(sx, sy) {
   if (!B || B.over || B.hero.dead) return;
   ndc.set(sx / innerWidth * 2 - 1, -(sy / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); ground.constant = 0;
   if (!ray.ray.intersectPlane(ground, hit)) return;
-  const x = Math.max(-16, Math.min(17, hit.x)), z = Math.max(-9, Math.min(10, hit.z));
+  const Bd = B.bounds || { x0: -16, x1: 17, z0: -9, z1: 10 }, x = Math.max(Bd.x0, Math.min(Bd.x1, hit.x)), z = Math.max(Bd.z0, Math.min(Bd.z1, hit.z));
   B.cmd = [x, z]; B.hero.target = null; Snd.tap();
   if (B.mark) scene.remove(B.mark);
   B.mark = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: '#f3d27a', transparent: true, opacity: 1, depthWrite: false })); B.mark.position.set(x, .06, z); scene.add(B.mark);
 }
 function endBattle(win) {
   if (!B || B.over) return; B.over = true;
+  if (B.mode === 'camp') { endCamp(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
   const w = B.wave, surv = { war: 0, arc: 0, hus: 0 }, lost = { war: 0, arc: 0, hus: 0 };
   B.units.forEach(u => { if (u.side === 'ally' && TROOPS[u.kind]) { if (u.dead) lost[u.kind]++; else surv[u.kind]++; } });
   for (const k in surv) S.army[k] = Math.max(0, S.army[k] - lost[k]);
@@ -1119,7 +1254,7 @@ function fleeBattle() { if (!B || B.over) return; B.over = true; const w = B.wav
   cleanupBattle(); toast(`Você recuou da Onda ${w}`); }
 function cleanupBattle() {
   if (!B) return;
-  if (B.intro) endIntro(); (B.extraShips || []).forEach(sh => scene.remove(sh));
+  if (B.intro) endIntro(); (B.extraShips || []).forEach(sh => scene.remove(sh)); if (B.mode === 'camp') leaveCamp(); (B.later || []).length = 0;
   B.units.forEach(u => { scene.remove(u.o); dropBar(u.bar); }); clearDmg();
   if (B.walls) Object.values(B.walls).forEach(w => dropBar(w.bar));
   if (B.oldD) cam.d = B.oldD; document.body.classList.remove('cine'); $('#cine').hidden = true;
@@ -1615,7 +1750,7 @@ function clearDmg() { dmgs.splice(0).forEach(d => d.el.remove()); }
 
 /* ---------- muralha em volta da vila ---------- */
 const WALL = { s: { a: 'z', v: 7.65, from: -14.3, to: 13.6, gate: -1 }, e: { a: 'x', v: 13.6, from: -6.8, to: 7.65, gate: .5 }, w: { a: 'x', v: -14.3, from: -6.8, to: 7.65, gate: 1.5 } };
-const wallHp = L => Math.round(700 * Math.pow(1.45, L - 1));
+const wallHp = L => Math.round(700 * Math.pow(1.45, L - 1) * (1 + .1 * RS('wall')));
 const outsideOf = (k, x, z) => k === 's' ? z > WALL.s.v : k === 'e' ? x > WALL.e.v : x < WALL.w.v;
 const wallPt = (k, v) => WALL[k].a === 'z' ? [v, WALL[k].v] : [WALL[k].v, v];
 const wallGroup = new THREE.Group(); let wallSig = '';
@@ -1685,7 +1820,7 @@ function stepCut(dt) {
 }
 function followHero(dt) {
   if (!B.follow || B.cut) return;
-  const h = B.hero, [x, z] = h.dead ? hexPos(7, 5) : [h.o.position.x, h.o.position.z], k = Math.min(1, dt * 2.2);
+  const h = B.hero, al = h.dead && B.units.find(u => u.side === 'ally' && u.on && !u.dead), [x, z] = !h.dead ? [h.o.position.x, h.o.position.z] : al ? [al.o.position.x, al.o.position.z] : B.rally || hexPos(7, 5), k = Math.min(1, dt * 2.2);
   cam.x += (x - cam.x) * k; cam.z += (z + 1 - cam.z) * k; placeCamera();
 }
 function toggleFollow() { if (!B) return; B.follow = !B.follow; $('#btnCam').classList.toggle('on', B.follow); Snd.tap(); }
@@ -1702,7 +1837,7 @@ function startEnding(win, html) {
     if (u.side === 'ally') { if (win) { faceFor(u, 'cheer'); u.cheer = Math.random() * .6; } else { faceFor(u, 'sad'); anim(u, 'idle'); } }
     else if (win) anim(u, 'idle'); else anim(u, 'idle');
   });
-  const h = B.hero; B.ending.at = !h.dead ? [h.o.position.x, 0, h.o.position.z] : (() => { const [x, z] = hexPos(7, 5); return [x, 0, z + 1.4]; })();
+  const h = B.hero, al = B.units.find(u => u.side === 'ally' && u.on && !u.dead); B.ending.at = !h.dead ? [h.o.position.x, 0, h.o.position.z] : al ? [al.o.position.x, 0, al.o.position.z] : B.rally ? [B.rally[0], 0, B.rally[1]] : (() => { const [x, z] = hexPos(7, 5); return [x, 0, z + 1.4]; })();
 }
 function stepEnding(dt) {
   const E = B.ending; E.t += dt;
@@ -1995,6 +2130,127 @@ function endIntro() {
   placeCamera();
 }
 
+/* ---------- heróis na batalha: habilidades ---------- */
+const heroUnitDef = id => { const s = hStats(id); return Object.assign({}, HEROES[id], { hp: s.hp, dmg: s.dmg, cd: s.cd, scale: .33, isHero: true, id }); };
+const dmgMul = u => (u.buffT > 0 ? 1.3 : 1);
+function floatText(x, y, z, txt, col) { if (dmgs.length > 40) return; const el = document.createElement('div'); el.className = 'dmg big'; el.textContent = txt; el.style.color = col; $('#tags').appendChild(el); dmgs.push({ el, x, y, z, t: -.3 }); }
+function later(t, fn) { (B.later = B.later || []).push({ t, fn }); }
+const foesAlive = () => B.units.filter(t => t.side === 'enemy' && alive(t));
+const alliesAlive = () => B.units.filter(t => t.side === 'ally' && alive(t));
+const dist = (a, b) => Math.hypot(a.o.position.x - b.o.position.x, a.o.position.z - b.o.position.z);
+function ring(x, z, col, r = 1.5) { const m = new THREE.Mesh(new THREE.RingGeometry(r * .85, r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: .8, depthWrite: false })); m.position.set(x, .08, z); scene.add(m); B.proj.push({ m, kind: 'fx', t: 0, dur: .7, fx: true }); }
+function bolt(x0, y0, z0, x1, y1, z1) {
+  const pts = []; for (let i = 0; i <= 8; i++) { const k = i / 8; pts.push(new THREE.Vector3(x0 + (x1 - x0) * k + (i && i < 8 ? (Math.random() - .5) * .5 : 0), y0 + (y1 - y0) * k, z0 + (z1 - z0) * k + (i && i < 8 ? (Math.random() - .5) * .5 : 0))); }
+  const m = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: '#cfe8ff', transparent: true })); scene.add(m); B.proj.push({ m, kind: 'fx', t: 0, dur: .35, fx: true });
+}
+function castSkill(u) {
+  const H = HEROES[u.D.id], F = foesAlive(), p = u.o.position; if (!F.length) return false;
+  const near = (r, from = u) => F.filter(e => dist(from, e) < r).sort((a, b) => dist(from, a) - dist(from, b));
+  const say2 = () => { floatText(p.x, 1.4, p.z, H.skn + '!', RAR[H.rar].col); faceFor(u, 'shout', 1); };
+  switch (H.sk) {
+    case 'warcry': { if (!near(4).length) return false; say2(); Snd.horn(); ring(p.x, p.z, '#f3d27a', 3.5); alliesAlive().forEach(a => { if (dist(u, a) < 3.5) { a.buffT = 6; if (a.face) faceFor(a, 'shout', .8); } }); anim(u, 'shoot', .6); u.busy = .5; return true; }
+    case 'boom': { const t = near(u.range + 1)[0]; if (!t) return false; say2(); anim(u, 'shoot', .55); u.busy = .5; later(.3, () => shoot('arrow', p.x, .8, p.z, t, u.dmg * 3, 'ally', 1.5)); return true; }
+    case 'charge': { const t = F.filter(e => dist(u, e) < 7).sort((a, b) => dist(u, b) - dist(u, a))[0]; if (!t || dist(u, t) < 2) return false; say2(); u.dash = { x: t.o.position.x, z: t.o.position.z, hit: false }; anim(u, 'run'); return true; }
+    case 'backstab': { const t = F.filter(e => dist(u, e) < 8).sort((a, b) => a.hp - b.hp)[0]; if (!t) return false; say2(); burstAt(p.x, .5, p.z, '#2a2a3a', 16, .05); const tp = t.o.position, a = t.o.rotation.y; p.set(tp.x - Math.sin(a) * .6, 0, tp.z - Math.cos(a) * .6); u.o.rotation.y = a; burstAt(p.x, .5, p.z, '#2a2a3a', 16, .05); anim(u, 'atk', .45); u.busy = .5; later(.2, () => { hurt(t, u.dmg * 5 * dmgMul(u)); Snd.hit(); }); return true; }
+    case 'heal': { const A = alliesAlive().filter(a => dist(u, a) < 3.5 && a.hp < a.max * .85); if (!A.length) return false; say2(); ring(p.x, p.z, '#7dff9a', 3.5); anim(u, 'shoot', .6); u.busy = .5; A.forEach(a => { const v = a.max * .3; a.hp = Math.min(a.max, a.hp + v); dmgNum(a.o.position.x, a.barY + .2, a.o.position.z, v, '#7dff9a'); burstAt(a.o.position.x, .6, a.o.position.z, '#9dffb4', 8, .03); }); return true; }
+    case 'rain': { let best = null, bn = 0; F.filter(e => dist(u, e) < u.range + 1).forEach(e => { const n = F.filter(o => dist(e, o) < 1.8).length; if (n > bn) { bn = n; best = e; } }); if (!best) return false; say2(); anim(u, 'shoot', .6); u.busy = .5; const c = best.o.position.clone(); ring(c.x, c.z, '#f3d27a', 1.8);
+      for (let i = 0; i < 6; i++) later(.3 + i * .15, () => { const x = c.x + (Math.random() - .5) * 2.4, z = c.z + (Math.random() - .5) * 2.4; burstAt(x, .2, z, '#d6b07a', 4, .03); foesAlive().forEach(e => { if (Math.hypot(e.o.position.x - c.x, e.o.position.z - c.z) < 1.8) hurt(e, u.dmg * .5 * dmgMul(u)); }); Snd.shoot(); }); return true; }
+    case 'wall': { if (!near(3).length) return false; say2(); ring(p.x, p.z, '#8fd3ff', 3); alliesAlive().forEach(a => { if (dist(u, a) < 3) { a.shieldT = 5; burstAt(a.o.position.x, .7, a.o.position.z, '#8fd3ff', 6, .02); } }); Snd.crash(); return true; }
+    case 'fury': { if (!near(1.9).length) return false; say2(); u.busy = 1.3; for (let i = 0; i < 3; i++) later(i * .4, () => { if (u.dead) return; anim(u, 'atk', .35); u.o.rotation.y += Math.PI * .66; ring(p.x, p.z, '#ff7a5a', 1.9); Snd.hit(); foesAlive().forEach(e => { if (dist(u, e) < 1.9) hurt(e, u.dmg * dmgMul(u)); }); }); bcut(() => [p.x, .4, p.z], 1.2, '', u.o.rotation.y + Math.PI * .7); return true; }
+    case 'thunder': { const t = near(u.range + 1)[0]; if (!t) return false; say2(); anim(u, 'shoot', .7); u.busy = .6; Snd.crash(); scene.background.offsetHSL(0, 0, .2); setTimeout(() => scene.background.offsetHSL(0, 0, -.2), 120);
+      let cur = t, hit = [t]; bolt(t.o.position.x, 8, t.o.position.z, t.o.position.x, .4, t.o.position.z); hurt(t, u.dmg * 4 * dmgMul(u));
+      for (let i = 0; i < 4; i++) { const nx = foesAlive().filter(e => !hit.includes(e) && dist(cur, e) < 3.5).sort((a, b) => dist(cur, a) - dist(cur, b))[0]; if (!nx) break; const c0 = cur.o.position; bolt(c0.x, .5, c0.z, nx.o.position.x, .5, nx.o.position.z); hurt(nx, u.dmg * 2.5 * dmgMul(u)); hit.push(nx); cur = nx; }
+      bcut(() => [t.o.position.x, .4, t.o.position.z], 1.1, '', Math.random() * 2); return true; }
+  }
+  return false;
+}
+function stepHeroExtras(u, dt) {
+  if (u.buffT > 0) u.buffT -= dt; if (u.shieldT > 0) u.shieldT -= dt;
+  if (u.dash) { const p = u.o.position, dx = u.dash.x - p.x, dz = u.dash.z - p.z, d = Math.hypot(dx, dz); u.o.rotation.y = Math.atan2(dx, dz);
+    const st = Math.min(d, 9 * dt); p.x += dx / d * st; p.z += dz / d * st; burstAt(p.x, .1, p.z, '#a08a66', 2, .02);
+    foesAlive().forEach(e => { if (!e.charged && dist(u, e) < .8) { e.charged = 1; hurt(e, u.dmg * 2.5 * dmgMul(u)); e.busy = .8; anim(e, 'hit', .5); } });
+    if (d < .3) { u.dash = null; B.units.forEach(e => e.charged = 0); anim(u, 'atk', .5); u.busy = .4; CINE || (B.cutCd = Math.max(B.cutCd, 0)); }
+    return true; }
+  if (u.sk && u.on && !u.dead) { if ((u.skCd -= dt) <= 0) u.skCd = castSkill(u) ? u.skMax : .6; }
+  return false;
+}
+
+/* ---------- Saga: batalha numa ilha longe da vila ---------- */
+const ARENA = { x: 95, z: 0 };
+let arenaG = null, arenaChap = -1;
+const CAMB = { x0: -18, x1: 18, z0: -10, z1: 14 };
+function buildArena(c) {
+  if (arenaG && arenaChap === c) { arenaG.visible = true; return; }
+  if (arenaG) scene.remove(arenaG); arenaChap = c; arenaG = new THREE.Group(); scene.add(arenaG);
+  const C = CHAPTERS[c], M = {}, add = (n, x, z, rot = 0, s = 1) => (M[n] = M[n] || []).push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot), new THREE.Vector3(s, s, s)));
+  let sd = 7 + c * 31; const R = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let r = -6; r <= 6; r++) for (let q = -8; q <= 8; q++) {
+    const x = ARENA.x + q * 2 + (r & 1 ? 1 : 0), z = ARENA.z + r * HZ, e = Math.pow((x - ARENA.x) / 15, 2) + Math.pow(z / 10, 2);
+    if (e > 1) continue; const edge = e > .62, rot = Math.floor(R() * 6) * Math.PI / 3;
+    add(C.props === 'beach' && edge ? 'hex_coast_A' : 'hex_grass', x, z, C.props === 'beach' && edge ? Math.atan2(x - ARENA.x, z) : 0);
+    if (!edge) { if (R() < .06) add(['rock_single_A', 'rock_single_C'][Math.floor(R() * 2)], x + (R() - .5), z + (R() - .5), rot, 1.3); continue; }
+    if (C.props === 'forest' || C.props === 'swamp') add(R() < .5 ? 'trees_A_large' : 'trees_B_medium', x, z, rot);
+    else if (C.props === 'rocks') add(R() < .5 ? 'mountain_A' : 'mountain_C', x, z, rot, .8);
+    else if (C.props === 'ruins') { if (R() < .4) add('building_destroyed', x, z, rot, 1.1); else if (R() < .5) add('rock_single_E', x, z, rot, 2); }
+    else if (R() < .3) add('rock_single_A', x, z, rot, 1.8);
+  }
+  for (const n in M) { const src = G[n].scene; src.updateMatrixWorld(true); src.traverse(m => { if (!m.isMesh) return; const im = new THREE.InstancedMesh(m.geometry, m.material, M[n].length); M[n].forEach((mt, i) => im.setMatrixAt(i, mt.clone().multiply(m.matrixWorld))); im.castShadow = !n.startsWith('hex'); im.receiveShadow = true; arenaG.add(im); }); }
+  // pedras rúnicas nos lados
+  [[-7.5, -3], [-7.5, 3], [7.5, -3], [7.5, 3]].forEach(([dx, dz]) => { const st = mesh(new THREE.BoxGeometry(.3, 1.2, .18), '#7c8478', ARENA.x + dx, .6, ARENA.z + dz); arenaG.add(st); });
+}
+let amb0 = null;
+function setAmbience(c) {
+  const hemi = scene.children.find(o => o.isHemisphereLight);
+  if (!amb0) amb0 = { fog: scene.fog.color.clone(), bg: scene.background.clone(), hemi: hemi.color.clone(), sun: sun.color.clone() };
+  if (c < 0) { scene.fog.color.copy(amb0.fog); scene.background.copy(amb0.bg); hemi.color.copy(amb0.hemi); sun.color.copy(amb0.sun); return; }
+  const C = CHAPTERS[c]; scene.fog.color.set(C.fog); scene.background.set(C.sky); hemi.color.set(C.light); sun.color.set(C.light);
+}
+function startCamp(g) {
+  if (B || CINE) return;
+  if (!restReady) { toast('Carregando… só um instante'); loadRest().then(() => startCamp(g)); return; }
+  const first = !S.camp.stars[g], rep = S.camp.rep.d === today() ? S.camp.rep.n : 0;
+  if (g > S.camp.next) return; if (!first && rep >= 10) { toast('Limite de repetições de hoje'); return; }
+  closeSheet(); Snd.init();
+  const c = Math.floor(g / STAGES), s = g % STAGES, d = stageDef(c, s);
+  buildArena(c); setAmbience(c);
+  B = { mode: 'camp', g, chap: c, stage: s, lvlF: d.lvl, wave: 1, t: 0, units: [], proj: [], blds: [], bhp: {}, killed: 0, total: d.list.length, queue: [], heroDown: 0, skillCd: 0, over: false, deployed: { ...S.army }, endT: 0, walls: null, shooters: [], later: [],
+    bounds: { x0: ARENA.x - 13, x1: ARENA.x + 13, z0: ARENA.z - 8, z1: ARENA.z + 8 }, rally: [ARENA.x - 4.5, ARENA.z] };
+  glowEyes();
+  B.hero = mkUnit('ally', 'hero', ARENA.x - 7, ARENA.z); activate(B.hero);
+  S.team.forEach((id, i) => { const u = mkUnit('ally', 'h_' + id, ARENA.x - 6.3, ARENA.z - 1.4 + i * 1.4); u.spawnAt = .2 + i * .2; B.queue.push(u); });
+  let k = 0; ['hus', 'war', 'arc'].forEach(type => { for (let i = 0; i < (S.army[type] || 0); i++) { const u = mkUnit('ally', type, ARENA.x - 8 - Math.random(), ARENA.z + (Math.random() - .5) * 5); u.spawnAt = .5 + k++ * .12; B.queue.push(u); } });
+  const first60 = Math.ceil(d.list.length * .6);
+  d.list.forEach((kind, i) => { const late = i >= first60, u = mkUnit('enemy', kind, ARENA.x + 6 + Math.random() * 3, ARENA.z + (Math.random() - .5) * 8); u.spawnAt = (late ? 13 : 1.2) + (i % 8) * .35; u.rise = !FOES[kind].beast; B.queue.push(u); });
+  Object.assign(CAMB, { x0: ARENA.x - 12, x1: ARENA.x + 12, z0: ARENA.z - 8, z1: ARENA.z + 10 });
+  B.follow = true; B.slow = 1; B.oldD = cam.d; cam.d = 17; cam.x = ARENA.x - 4; cam.z = ARENA.z + 2; placeCamera();
+  document.body.classList.add('battle', 'camp'); $('#bhud').hidden = false; $('#bWave').textContent = `Saga ${c + 1}-${s + 1}${d.boss ? ' · Chefe' : ''}`;
+  folk.forEach(f => f.o.visible = false); guards.forEach(g2 => g2.o.visible = false);
+  Music.start('batalha'); Snd.horn(); say(d.boss ? `${FOES[CHAPTERS[c].boss].name}! Lutem, vikings!` : 'Avante, vikings!');
+  toast(`${CHAPTERS[c].name} · fase ${s + 1}`);
+}
+function glowEyes() { ['Skeleton_Minion', 'Skeleton_Warrior', 'Skeleton_Rogue', 'Skeleton_Mage'].forEach(n => G[n] && G[n].scene.traverse(m => { if (m.isMesh && /Eyes/.test(m.name)) { m.material.emissive = new THREE.Color('#ff3a1a'); m.material.emissiveIntensity = 1.4; } })); }
+function endCamp(win) {
+  const g = B.g, c = B.chap, s = B.stage, heroes = B.units.filter(u => u.side === 'ally' && (u.kind === 'hero' || u.D.isHero));
+  const aliveH = heroes.filter(u => !u.dead).length, starsN = !win ? 0 : aliveH === heroes.length && B.t < 90 ? 3 : aliveH >= Math.ceil(heroes.length / 2) ? 2 : 1;
+  let rew = null, first = false;
+  if (win) {
+    first = !S.camp.stars[g]; rew = stageReward(c, s, first);
+    for (const k in rew) gain(k, rew[k]);
+    S.camp.stars[g] = Math.max(S.camp.stars[g] || 0, starsN);
+    if (g === S.camp.next) S.camp.next++;
+    if (!first) { if (S.camp.rep.d !== today()) S.camp.rep = { d: today(), n: 0 }; S.camp.rep.n++; }
+    dcount('saga'); Snd.done(); say(starsN === 3 ? 'Vitória perfeita! Skål!' : 'Vitória!');
+  } else { Snd.lose(); say('Recuar! Voltaremos mais fortes.'); }
+  save(); dirty = true;
+  B.pendEnd = { win, t: .7, html: win
+    ? `<h2>Vitória!</h2><div class="bigstars">${'<b>★</b>'.repeat(starsN)}${'<i>★</i>'.repeat(3 - starsN)}</div><p class="sub">Saga ${c + 1}-${s + 1} · ${CHAPTERS[c].name}${first ? '' : ' (repetição)'}</p><div class="costs big">${Object.entries(rew).map(([k, v]) => `<div class="cost">${icoSVG(k)}+${fmt(v)}</div>`).join('')}</div><div class="actions"><button class="btn" data-a="saga">Continuar a Saga</button><button class="btn ghost" data-a="home">Vila</button></div>`
+    : `<h2>Derrota…</h2><p class="sub">Saga ${c + 1}-${s + 1}</p><p class="desc">Evolua seus heróis, pesquise no Círculo de Runas e treine mais tropas. As tropas voltaram vivas para a vila.</p><div class="actions"><button class="btn" data-a="heroes">Heróis</button><button class="btn ghost" data-a="saga">Saga</button></div>` };
+}
+function leaveCamp() {
+  if (arenaG) arenaG.visible = false; setAmbience(-1);
+  Object.assign(CAMB, { x0: -18, x1: 18, z0: -10, z1: 14 }); cam.x = 0; cam.z = 3; document.body.classList.remove('camp');
+}
+
 /* ---------- laço de render ---------- */
 let lastT = performance.now();
 function frame(now) {
@@ -2039,6 +2295,8 @@ function renderSheet() {
   if (p.type === 'serraria' && L) html += expHTML('lenha');
   if (p.type === 'pedreira' && L) html += expHTML('mina');
   if (p.type === 'cabana' && L) html += expHTML('caca');
+  if (p.type === 'taverna' && L) html += `<div class="actions"><button class="btn" data-a="tavern">Recrutar heróis</button><button class="btn ghost" data-a="heroes">Ver heróis</button></div>`;
+  if (p.type === 'runas') html += runasHTML();
   if (p.type === 'ferreiro' && L) html += armorHTML();
   if (p.type === 'horta') html += hortaHTML();
   if (p.type === 'curral') html += curralHTML();
@@ -2173,6 +2431,7 @@ const Cloud = {
     S.owner = this.user.id;
     const now = new Date().toISOString();
     const a = await this.sb.from('saves').upsert({ user_id: this.user.id, data: S, updated_at: now });
+    if (this.evOk !== false) { const ev = evState(); if (ev.pts > 0) this.sb.from('event_scores').upsert({ week: ev.w, user_id: this.user.id, jarl: S.jarl || 'Jarl', pts: ev.pts }).then(r => { if (r.error) this.evOk = false; }); }
     const b = await this.sb.from('profiles').upsert({ id: this.user.id, jarl: S.jarl || 'Jarl', vila: S.vila || 'Vila do Jarl', power: Math.min(200000, power()), best_wave: Math.min(30, S.wave - 1), updated_at: now });
     this.busy = false; this.lastPush = Date.now();
     if (a.error || b.error) { cloudDirty = true; this.setStatus('err'); console.warn(a.error || b.error); } else this.setStatus('ok');
@@ -2465,19 +2724,180 @@ function pickField(sx, sy) {
   ground.constant = 0; return best;
 }
 
+/* ========== Retratos dos heróis (desenhados uma vez em 3D) ========== */
+const PORTRAIT = {};
+let pR = null;
+function heroPortrait(id) {
+  if (PORTRAIT[id]) return PORTRAIT[id];
+  if (!restReady) return '';
+  try {
+    if (!pR) { pR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); pR.setSize(160, 160); pR.outputColorSpace = THREE.SRGBColorSpace; pR.toneMapping = THREE.NeutralToneMapping; }
+    const H = HEROES[id], sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight('#fff8ec', '#4a3a2a', 2.2)); const dl = new THREE.DirectionalLight('#fff', 1.6); dl.position.set(1, 2, 3); sc.add(dl);
+    const c = mkChar(H.model, 1, H.r, H.l); addFace(c); setFace(c, H.rar === 'lend' ? 'angry' : 'calm'); c.mixer.update(.4); c.o.rotation.y = -.35; sc.add(c.o);
+    const cam = new THREE.PerspectiveCamera(30, 1, .1, 20); cam.position.set(.3, 1.75, 3.3); cam.lookAt(0, 1.45, 0);
+    pR.render(sc, cam); PORTRAIT[id] = pR.domElement.toDataURL('image/png');
+  } catch (e) { PORTRAIT[id] = ''; }
+  return PORTRAIT[id];
+}
+const stars = n => '★'.repeat(n) + '<i>' + '★'.repeat(5 - n) + '</i>';
+const pimg = id => { const u = heroPortrait(id); return u ? `<img src="${u}" alt="">` : `<span class="pfb">ᛉ</span>`; };
+
+/* ========== Tela de heróis ========== */
+function openHeroes() {
+  sheetFor = null; const slots = teamSlots();
+  const owned = HERO_IDS.filter(id => hs(id).lvl), rest = HERO_IDS.filter(id => !hs(id).lvl);
+  const card = id => { const H = HEROES[id], h = hs(id), R = RAR[H.rar], inTeam = S.team.includes(id);
+    const prog = h.lvl ? (h.st < 5 ? `${h.sh}/${heroStarCost(id, h.st)}` : 'máx.') : `${h.sh}/${R.need}`;
+    const can = h.lvl ? (h.st < 5 && h.sh >= heroStarCost(id, h.st)) : h.sh >= R.need;
+    return `<button class="hcard${h.lvl ? '' : ' locked'}${inTeam ? ' team' : ''}${can ? ' can' : ''}" data-a="hero" data-k="${id}" style="--rc:${R.col}">
+      <div class="pt">${pimg(id)}</div><b>${H.name}</b><small>${h.lvl ? 'Nv ' + h.lvl : R.n}</small><div class="st">${h.lvl ? stars(h.st) : ''}</div>
+      <div class="shb"><i style="width:${Math.min(100, h.sh / (h.lvl ? heroStarCost(id, h.st) || 1 : R.need) * 100)}%"></i><span>${prog}</span></div></button>`; };
+  openSheet(`<h2>Heróis</h2><p class="sub">Equipe da batalha: ${S.team.length}/${slots} · mais vagas com o Salão nos níveis 3 e 6</p>
+    <div class="teamrow">${Array.from({ length: 3 }, (_, i) => { const id = S.team[i]; return i >= slots ? '<div class="slot lock">🔒</div>' : id ? `<button class="slot" data-a="hero" data-k="${id}">${pimg(id)}</button>` : '<div class="slot">+</div>'; }).join('')}</div>
+    <div class="hgrid">${owned.concat(rest).map(card).join('')}</div>
+    <div class="costs" style="margin-top:10px"><div class="cost">${icoSVG('saga')}${S.gems.saga || 0}</div><div class="cost">${icoSVG('mead')}${S.gems.mead || 0}</div></div>
+    <div class="actions"><button class="btn" data-a="tavern">Taverna: recrutar</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
+}
+function openHero(id) {
+  sheetFor = null; const H = HEROES[id], h = hs(id), R = RAR[H.rar];
+  if (!h.lvl) {
+    openSheet(`<div class="hhead" style="--rc:${R.col}"><div class="pt big">${pimg(id)}</div><div><h2>${H.name}</h2><p class="sub">${H.tit} · <b style="color:${R.col}">${R.n}</b></p></div></div>
+      <div class="stat"><span>Habilidade: ${H.skn}</span></div><p class="desc">${H.skd}</p>
+      <div class="stat"><span>Fragmentos</span><span>${h.sh} / ${R.need}</span></div>
+      <p class="sub">Ganhe fragmentos na Saga, na Taverna, nos eventos e nas missões.</p>
+      <div class="actions"><button class="btn" data-a="hunlock" data-k="${id}" ${h.sh >= R.need ? '' : 'disabled'}>Recrutar ${H.name}</button><button class="btn ghost" data-a="heroes">Voltar</button></div>`); return;
+  }
+  const s = hStats(id), maxL = heroMaxLv(h.st), lc = heroLvCost(id, h.lvl), sc = heroStarCost(id, h.st), inTeam = S.team.includes(id);
+  openSheet(`<div class="hhead" style="--rc:${R.col}"><div class="pt big">${pimg(id)}</div><div><h2>${H.name}</h2><p class="sub">${H.tit} · <b style="color:${R.col}">${R.n}</b></p><div class="st big">${stars(h.st)}</div></div></div>
+    <div class="stat"><span>Nível</span><span>${h.lvl} / ${maxL}</span></div>
+    <div class="stat"><span>Vida · Dano</span><span>${fmt(s.hp)} · ${fmt(s.dmg)}${H.ranged ? ' · à distância' : ''}</span></div>
+    <div class="stat"><span>${H.skn}</span><span>recarga ${s.cd.toFixed(0)}s</span></div><p class="desc" style="font-size:14px">${H.skd}</p>
+    ${h.lvl < maxL ? `<p class="sub">Subir para o nível ${h.lvl + 1}</p>${costHTML(lc)}<div class="actions"><button class="btn" data-a="hlvl" data-k="${id}" ${canAfford(lc) ? '' : 'disabled'}>Subir de nível</button></div>` : `<p class="sub">Nível máximo para ${h.st} estrela${h.st > 1 ? 's' : ''}. Suba as estrelas para liberar mais níveis.</p>`}
+    ${h.st < 5 ? `<p class="sub" style="margin-top:8px">Próxima estrela: +18% de força e mais 10 níveis</p>${costHTML({ ['h:' + id]: sc })}<div class="actions"><button class="btn rune" data-a="hstar" data-k="${id}" ${h.sh >= sc ? '' : 'disabled'}>Subir estrela</button></div>` : '<p class="ok">5 estrelas: lenda completa!</p>'}
+    <div class="actions"><button class="btn ${inTeam ? 'ghost' : ''}" data-a="hteam" data-k="${id}">${inTeam ? 'Tirar da equipe' : 'Pôr na equipe'}</button><button class="btn ghost" data-a="heroes">Voltar</button></div>`);
+}
+function openTavern() {
+  sheetFor = null; const m = S.gems.mead || 0, pity = 10 - ((S.pity || 0) % 10);
+  openSheet(`<h2>Taverna</h2><p class="sub">Pague uma rodada de hidromel e os heróis contam suas sagas</p>
+    <div class="stat"><span>Seu hidromel</span><span>${icoSVG('mead')} ${m}</span></div>
+    <div class="odds">${RECRUIT_ODDS.map(([k, p]) => `<span style="color:${RAR[k].col}">${RAR[k].n} ${Math.round(p * 100)}%</span>`).join('')}</div>
+    <p class="sub">Garantia: a cada 10 rodadas, fragmentos de herói Épico ou Lendário (faltam ${pity}). O hidromel vem da Saga, das missões, do baú e dos eventos.</p>
+    <div class="actions"><button class="btn" data-a="rec" data-k="1" ${m >= 1 ? '' : 'disabled'}>1 rodada · ${icoSVG('mead')}1</button><button class="btn rune" data-a="rec" data-k="10" ${m >= 10 ? '' : 'disabled'}>10 rodadas · ${icoSVG('mead')}10</button></div>
+    <div class="actions"><button class="btn ghost" data-a="heroes">Ver heróis</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
+}
+function doRecruit(n) {
+  if ((S.gems.mead || 0) < n) return; S.gems.mead -= n; const got = [];
+  for (let i = 0; i < n; i++) { S.pity = (S.pity || 0) + 1; got.push(recruitOnce(S.pity % 10 === 0)); }
+  dcount('recrutar', n); save(); dirty = true; Snd.chime();
+  const sum = {}; got.forEach(g => sum[g.id] = (sum[g.id] || 0) + g.n);
+  openSheet(`<h2>Fragmentos recebidos!</h2><div class="reveal">${Object.entries(sum).map(([id, v], i) => { const H = HEROES[id], R = RAR[H.rar]; return `<div class="rv" style="--rc:${R.col};animation-delay:${i * .12}s"><div class="pt">${pimg(id)}</div><b>${H.name}</b><small style="color:${R.col}">${R.n}</small><span>+${v}</span></div>`; }).join('')}</div>
+    <div class="actions"><button class="btn" data-a="heroes">Ver heróis</button><button class="btn ghost" data-a="tavern">Taverna</button></div>`);
+}
+
+/* ========== Círculo de Runas ========== */
+function runasHTML() {
+  const L = S.b.runas.lvl; if (!L) return '';
+  const R = S.rs; let h = '';
+  if (R) { const t = TECH_BY[R.k], left = Math.max(0, R.end - Date.now()), c = Math.ceil(left / 60000);
+    h += `<div class="exp"><div class="exph"><b>Pesquisando</b><small>${t.n} ${(S.research[t.k] || 0) + 1}</small></div><div class="hbar gold"><i style="width:${(1 - left / (R.dur * 1000)) * 100}%"></i></div><div class="exprow"><span>Termina em</span><span>${fmtT(left / 1000)}</span></div><div class="actions"><button class="btn rune" data-a="rspeed">${c ? `Acelerar · ${c} runa${c > 1 ? 's' : ''}` : 'Concluir'}</button></div></div>`; }
+  h += TECH.map(b => `<p class="sub" style="margin:10px 0 4px">${b.br}</p><div class="techs">${b.list.map(([k, n, d]) => { const l = S.research[k] || 0, max = l >= 5, req = techReq(l), lock = L < req, cost = max ? null : techCost(k, l);
+    return `<button class="tech${max ? ' max' : ''}${lock ? ' locked' : ''}" data-a="tech" data-k="${k}"><b>${n}</b><small>${d}</small><span class="lv">${'◆'.repeat(l)}${'◇'.repeat(5 - l)}</span>${max ? '<span class="ok">completo</span>' : lock ? `<span class="req">Círculo nível ${req}</span>` : `<span class="tc">${Object.entries(cost).map(([r, v]) => `${icoSVG(r)}${fmt(v)}`).join(' ')} · ${fmtT(techTime(l))}</span>`}</button>`; }).join('')}</div>`).join('');
+  return h;
+}
+function startTech(k) {
+  const l = S.research[k] || 0, c = techCost(k, l);
+  if (S.rs) { toast('Já há uma pesquisa em andamento'); Snd.no(); return; }
+  if (l >= 5 || S.b.runas.lvl < techReq(l)) return;
+  if (!canAfford(c)) { toast('Faltam recursos'); Snd.no(); return; }
+  spend(c); const dur = techTime(l); S.rs = { k, end: Date.now() + dur * 1000, dur }; dcount('pesquisa'); Snd.build(); save(); dirty = true; renderSheet();
+}
+
+/* ========== Saga (mapa da campanha) ========== */
+let sagaChap = 0;
+function openSaga(c) {
+  sheetFor = null; const maxC = Math.min(CHAPTERS.length - 1, Math.floor(S.camp.next / STAGES)); sagaChap = c ?? Math.min(maxC, sagaChap || maxC); const C = CHAPTERS[sagaChap];
+  const chest = chapStars(sagaChap), got = S.camp.chest[sagaChap];
+  const nodes = Array.from({ length: STAGES }, (_, s) => { const g = campIdx(sagaChap, s), st = S.camp.stars[g] || 0, open = g <= S.camp.next, cur = g === S.camp.next;
+    return `<button class="node${st ? ' done' : ''}${cur ? ' cur' : ''}${s === 7 ? ' boss' : ''}" data-a="stage" data-k="${g}" ${open ? '' : 'disabled'}><b>${sagaChap + 1}-${s + 1}</b><span>${s === 7 ? '☠' : s === 3 ? '⚔' : ''}</span><i>${'★'.repeat(st)}${'☆'.repeat(3 - st)}</i></button>`; }).join('');
+  openSheet(`<h2>Saga do Fiorde</h2><div class="tabs">${CHAPTERS.map((x, i) => `<button data-a="chap" data-k="${i}" class="${i === sagaChap ? 'on' : ''}" ${i <= maxC ? '' : 'disabled'}>${i + 1}</button>`).join('')}</div>
+    <p class="sub"><b style="color:var(--gold-hi)">Capítulo ${sagaChap + 1}: ${C.name}</b> · herói do capítulo: ${HEROES[C.hero].name}</p>
+    <div class="path">${nodes}</div>
+    <div class="stat"><span>Baú de 24 estrelas</span><span>${chest}/24 ${got ? '✓' : chest >= 24 ? `<button class="btn sm" data-a="chapchest" data-k="${sagaChap}">Abrir</button>` : ''}</span></div>
+    <p class="sub">Sua equipe: Jarl + ${S.team.map(id => HEROES[id].name).join(', ') || 'nenhum herói'} + ${armyCount()} tropas. As tropas não morrem de verdade na Saga.</p>
+    <div class="actions"><button class="btn" data-a="stage" data-k="${Math.min(S.camp.next, campIdx(CHAPTERS.length - 1, STAGES - 1))}">${S.camp.next >= CHAPTERS.length * STAGES ? 'Saga completa!' : `Lutar na fase ${Math.floor(S.camp.next / STAGES) + 1}-${S.camp.next % STAGES + 1}`}</button><button class="btn ghost" data-a="heroes">Heróis</button></div>`);
+}
+function openStage(g) {
+  const c = Math.floor(g / STAGES), s = g % STAGES, d = stageDef(c, s), cnt = {}, first = !S.camp.stars[g];
+  d.list.forEach(k => cnt[k] = (cnt[k] || 0) + 1);
+  const rep = S.camp.rep.d === today() ? S.camp.rep.n : 0;
+  openSheet(`<h2>Fase ${c + 1}-${s + 1}</h2><p class="sub">${CHAPTERS[c].name}${d.boss ? ' · CHEFE' : ''} · inimigos nível ${Math.round(d.lvl * 10)}</p>
+    <div class="stat"><span>Inimigos</span><span>${Object.entries(cnt).map(([k, v]) => `${v} ${v > 1 ? FOES[k].pl : FOES[k].name}`).join(' · ')}</span></div>
+    <p class="sub">${first ? 'Recompensa da primeira vitória' : `Recompensa ao repetir (${rep}/10 hoje)`}</p>${costHTML(stageReward(c, s, first))}
+    <p class="sub">★ vencer · ★★ com metade dos heróis de pé · ★★★ sem perder nenhum herói em até 90s</p>
+    <div class="actions"><button class="btn" data-a="fightstage" data-k="${g}" ${!first && rep >= 10 ? 'disabled' : ''}>Lutar!</button><button class="btn ghost" data-a="saga">Voltar</button></div>`);
+}
+
+/* ========== Evento da semana ========== */
+async function openEvent() {
+  sheetFor = null; const E = curEvent(), st = evState();
+  const head = `<h2>${E.name}</h2><p class="sub">${E.desc} Termina em ${fmtT(evEndsIn() / 1000)}.</p>
+    <div class="stat"><span>Seus pontos</span><span><b style="color:var(--gold-hi);font-size:20px">${fmt(st.pts)}</b></span></div>
+    <div class="evhow">${Object.entries(E.pts).map(([k, v]) => `<span>${{ obras: 'Obra iniciada', pesquisa: 'Pesquisa', exp_caca: 'Caçada', exp_lenha: 'Lenhadores', exp_mina: 'Mineiros', ondas: 'Onda vencida', saga: 'Fase da Saga', colher: 'Colheita', curral: 'Curral', coletar: 'Coleta' }[k]} +${v}</span>`).join('')}</div>
+    <div class="tiers">${EV_TIERS.map(([p, r], i) => { const got = st.got.includes(i), ok = st.pts >= p; return `<div class="tier${got ? ' done' : ok ? ' ok' : ''}"><b>${fmt(p)}</b><span>${Object.entries(r).map(([k, v]) => `${icoSVG(k)}${v}`).join(' ')}</span>${got ? '✓' : ok ? `<button class="btn sm" data-a="evget" data-k="${i}">Pegar</button>` : ''}</div>`; }).join('')}</div>`;
+  openSheet(head + `<p class="sub" style="margin-top:10px">Ranking da semana</p><div class="rklist" id="evrk"><p class="sub">${Cloud.on() ? 'Carregando…' : 'Entre na conta para ver o ranking.'}</p></div><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`);
+  if (!Cloud.on()) return;
+  const { data, error } = await Cloud.sb.from('event_scores').select('user_id,jarl,pts').eq('week', weekNo()).order('pts', { ascending: false }).limit(10);
+  const el = $('#evrk'); if (!el) return;
+  el.innerHTML = error ? '<p class="sub">Ranking indisponível no momento.</p>' : (data.length ? data.map((r, i) => `<div class="rk${Cloud.user && r.user_id === Cloud.user.id ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="who"><b>${esc(r.jarl)}</b></span><span class="val">${fmt(r.pts)}</span></div>`).join('') : '<p class="sub">Ninguém pontuou ainda. Seja o primeiro!</p>');
+}
+
+/* ========== cliques das telas novas ========== */
+sheet.addEventListener('click', e => {
+  const a = e.target.closest('[data-a]'); if (!a) return; const k = a.dataset.k;
+  switch (a.dataset.a) {
+    case 'heroes': Snd.tap(); openHeroes(); break;
+    case 'hero': Snd.tap(); openHero(k); break;
+    case 'hunlock': { const h = hs(k), need = RAR[HEROES[k].rar].need; if (h.sh < need) break; h.sh -= need; h.lvl = 1; h.st = 1; if (S.team.length < teamSlots()) S.team.push(k); Snd.chime(); toast(`${HEROES[k].name} entrou para a sua saga!`); save(); dirty = true; openHero(k); break; }
+    case 'hlvl': { const h = hs(k), c = heroLvCost(k, h.lvl); if (h.lvl >= heroMaxLv(h.st) || !canAfford(c)) break; spend(c); h.lvl++; Snd.done(); save(); dirty = true; openHero(k); break; }
+    case 'hstar': { const h = hs(k), c = heroStarCost(k, h.st); if (h.st >= 5 || h.sh < c) break; h.sh -= c; h.st++; Snd.chime(); toast(`${HEROES[k].name} agora tem ${h.st} estrelas!`); save(); dirty = true; openHero(k); break; }
+    case 'hteam': { const i = S.team.indexOf(k); if (i >= 0) S.team.splice(i, 1); else { if (S.team.length >= teamSlots()) { toast('Equipe cheia: tire alguém primeiro'); Snd.no(); break; } S.team.push(k); } Snd.tap(); save(); openHero(k); break; }
+    case 'tavern': Snd.tap(); openTavern(); break;
+    case 'rec': doRecruit(+k); break;
+    case 'tech': startTech(k); break;
+    case 'rspeed': { const c = Math.ceil(Math.max(0, S.rs.end - Date.now()) / 60000); if (S.runes < c) { toast('Runas insuficientes'); Snd.no(); break; } S.runes -= c; S.rs.end = Date.now(); tick(); renderSheet(); break; }
+    case 'saga': Snd.tap(); openSaga(); break;
+    case 'chap': Snd.tap(); openSaga(+k); break;
+    case 'stage': Snd.tap(); openStage(+k); break;
+    case 'fightstage': startCamp(+k); break;
+    case 'chapchest': { const c = +k; if (S.camp.chest[c] || chapStars(c) < 24) break; S.camp.chest[c] = 1; const r = CHAP_CHEST(c); for (const x in r) gain(x, r[x]); Snd.chime(); save(); dirty = true; openSheet(rewardCard('Baú do capítulo!', CHAPTERS[c].name, r)); break; }
+    case 'evget': { const i = +k, st = evState(), [p, r] = EV_TIERS[i]; if (st.got.includes(i) || st.pts < p) break; st.got.push(i); for (const x in r) gain(x, r[x]); Snd.chime(); save(); dirty = true; openEvent(); break; }
+  }
+});
+$('#btnHeroes').addEventListener('click', () => { Snd.init(); Snd.tap(); openHeroes(); });
+$('#btnSaga').addEventListener('click', () => { Snd.init(); Snd.tap(); openSaga(); });
+$('#btnEvent').addEventListener('click', () => { Snd.init(); Snd.tap(); openEvent(); });
+function renderSide() {
+  const canHero = HERO_IDS.some(id => { const h = hs(id); return h.lvl ? (h.st < 5 && h.sh >= heroStarCost(id, h.st)) : h.sh >= RAR[HEROES[id].rar].need; });
+  $('#btnHeroes').classList.toggle('dot', canHero);
+  $('#btnEvent').classList.toggle('dot', EV_TIERS.some(([p], i) => evState().pts >= p && !evState().got.includes(i)));
+  $('#evLeft').textContent = fmtT(evEndsIn() / 1000).split(' ')[0];
+}
+
 /* ========== Laço do jogo ========== */
 function tick() {
   finished = []; trainedNow = 0; advance(Date.now());
-  refreshHerd(); refreshPiles(); stepTut(); $('#mission').classList.toggle('dot', chestReady() || dqClaimable());
+  refreshHerd(); refreshPiles(); stepTut(); renderSide(); $('#mission').classList.toggle('dot', chestReady() || dqClaimable());
   ['lenha', 'mina', 'caca'].forEach(k => { const e = S.exp[k]; if (e && Date.now() >= e.end && !e.told) { e.told = 1; Snd.done(); toast(`${EXP[k].name} terminaram! Toque no ✓ para ver`); save(); } });
   if (trainedNow) { dirty = true; refreshGuards(); if (sheetFor === 'quartel' && !sheet.hidden) renderSheet(); }
+  finished.filter(id => id.startsWith('rs:')).forEach(id => { const t = TECH_BY[id.slice(3)]; Snd.chime(); toast(`Runa pesquisada: ${t.n} nível ${S.research[t.k]}!`); dirty = true; if (sheetFor === 'runas') renderSheet(); });
+  finished = finished.filter(id => !id.startsWith('rs:'));
   finished.forEach(id => { const p = plotById(id); Snd.done(); burst(p, '#f3d27a', 24); toast(`${DEF[p.type].name} chegou ao nível ${S.b[id].lvl}!`); dirty = true; });
   if (finished.length) refreshDecor();
   if (finished.length && sheetFor) renderSheet();
   renderBuilders();
   if (dirty) { renderHUD(); save(); dirty = false; }
 }
-setInterval(() => { tick(); if (sheetFor && !sheet.hidden && S.b[sheetFor] && (S.b[sheetFor].end || (sheetFor === 'quartel' && S.train) || ((sheetFor === 'serraria' && S.exp.lenha) || (sheetFor === 'pedreira' && S.exp.mina)) || sheetFor === 'horta' || sheetFor === 'curral') && !sheet.contains(document.activeElement && document.activeElement.tagName === 'INPUT' ? document.activeElement : null)) renderSheet(); }, 1000);
+setInterval(() => { tick(); if (sheetFor && !sheet.hidden && S.b[sheetFor] && (S.b[sheetFor].end || (sheetFor === 'quartel' && S.train) || ((sheetFor === 'serraria' && S.exp.lenha) || (sheetFor === 'pedreira' && S.exp.mina)) || sheetFor === 'horta' || sheetFor === 'curral' || (sheetFor === 'runas' && S.rs)) && !sheet.contains(document.activeElement && document.activeElement.tagName === 'INPUT' ? document.activeElement : null)) renderSheet(); }, 1000);
 setInterval(() => { dirty = true; }, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); dirty = true; if (S.music && Snd.ctx) Music.start(B ? 'batalha' : 'vila'); } else { save(); Music.stop(); } });
 
@@ -2583,7 +3003,7 @@ function dailyQuests() {
   }
   return S.dq;
 }
-function dcount(k, n = 1) { const q = dailyQuests(); q.cnt[k] = (q.cnt[k] || 0) + n; dirty = true; }
+function dcount(k, n = 1) { const q = dailyQuests(); q.cnt[k] = (q.cnt[k] || 0) + n; evAdd(k, n); dirty = true; }
 const dqDef = k => DQ_POOL.find(q => q.k === k);
 const dqDone = k => (dailyQuests().cnt[k] || 0) >= dqDef(k).n;
 function dqClaimable() { const q = dailyQuests(); return q.list.some(k => dqDone(k) && !q.got.includes(k)) || (!q.bonus && q.list.every(k => q.got.includes(k))); }
@@ -2650,7 +3070,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 15;
+const GAME_VERSION = 16;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -2673,4 +3093,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && !B && !CINE) { reloaded = true; save(); location.reload(); } });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); setInterval(() => r.update(), 5 * 60e3); }).catch(() => {}));
 }
-window.__vs = { Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
