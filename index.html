@@ -69,16 +69,33 @@ button:focus-visible{outline:3px solid var(--gold-hi);outline-offset:2px}
 .mission{position:relative}
 .mitem.dq{justify-content:space-between}.mitem.dq small{color:var(--bone-dim);font-weight:800}.mitem.dq svg{width:15px;height:15px;vertical-align:-3px}
 .chestline{cursor:pointer;margin-top:6px}
-.chestrow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}
-.cd{display:grid;gap:2px;justify-items:center;background:rgba(0,0,0,.28);border-radius:8px;padding:5px 2px;font-size:11px;font-weight:800}
-.cd b{font:400 13px var(--display);color:var(--gold-hi)}.cd span{display:flex;align-items:center;gap:1px}.cd svg{width:13px;height:13px}
-.cd.got{opacity:.45}.cd.now{outline:2px solid var(--gold);background:rgba(217,164,65,.18)}
-.chest{position:relative;width:110px;height:90px;margin:10px auto}
-.chest .box{position:absolute;left:0;right:0;bottom:0;height:55px;border-radius:6px;background:linear-gradient(#8a5a2c,#5c3a1a);border:3px solid #2b1a08;box-shadow:inset 0 0 0 4px #d9a441}
-.chest .lid{position:absolute;left:-3px;right:-3px;top:8px;height:34px;border-radius:30px 30px 4px 4px;background:linear-gradient(#a8743f,#6b4527);border:3px solid #2b1a08;box-shadow:inset 0 0 0 4px #d9a441;transform-origin:50% 100%;transition:transform .5s cubic-bezier(.3,1.6,.5,1);z-index:1}
-.chest:not(.open) .lid{animation:wob 1.4s ease-in-out infinite}
-.chest.open .lid{transform:rotate(-35deg) translateY(-14px)}
-.chest.open::after{content:'';position:absolute;left:10px;right:10px;top:30px;height:30px;background:radial-gradient(#fff6c8,rgba(243,210,122,0));filter:blur(4px)}
+.chestrow{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:8px 0}
+.cd{position:relative;display:grid;gap:1px;justify-items:center;align-content:start;background:linear-gradient(#3a2a1a,#241810);border:1px solid #4a3622;border-radius:10px;padding:4px 1px 5px;font-size:10px;font-weight:800}
+.cd b{font:400 12px var(--display);color:var(--gold-hi)}.cd .cr{display:grid;gap:1px;justify-items:center}.cd span{display:flex;align-items:center;gap:1px;white-space:nowrap}.cd span svg{width:11px;height:11px}
+.cd .csvg.mini{width:34px;height:31px}.cd.got{opacity:.5}.cd.got .csvg{filter:grayscale(.6)}
+.cd .ck{position:absolute;top:18px;left:50%;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;background:#2e7a3a;border:2px solid #0f2a14;color:#fff;font:900 12px/16px var(--body);text-align:center;font-style:normal}
+.cd.now{border-color:var(--gold-hi);background:linear-gradient(#5a3e1a,#2e2010);box-shadow:0 0 12px rgba(243,210,122,.45);animation:cdp 1.6s ease-in-out infinite}
+.cd.l7{border-color:#8a5ad8}.cd.l7 b{color:#d8b8ff}
+@keyframes cdp{50%{box-shadow:0 0 20px rgba(243,210,122,.8)}}
+.cstage{position:relative;height:210px;margin:4px auto 0;display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cstage .csvg{position:relative;width:190px;height:171px;z-index:2;filter:drop-shadow(0 6px 0 rgba(0,0,0,.25))}
+.cstage .rays{position:absolute;left:50%;top:44%;width:420px;height:420px;margin:-210px 0 0 -210px;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,226,140,.0) 0 9deg,rgba(255,226,140,.22) 9deg 18deg);-webkit-mask:radial-gradient(closest-side,#000 30%,transparent);mask:radial-gradient(closest-side,#000 30%,transparent);opacity:.35;animation:spin 18s linear infinite;z-index:1}
+.cstage.lend .rays{background:repeating-conic-gradient(from 0deg,rgba(200,150,255,0) 0 9deg,rgba(220,180,255,.3) 9deg 18deg);opacity:.6}
+@keyframes spin{to{transform:rotate(360deg)}}
+.csvg .glow{opacity:0;transition:opacity .4s}.csvg .lid{transform-box:fill-box;transform-origin:50% 100%;transition:transform .45s cubic-bezier(.3,1.6,.5,1)}
+.cstage.ready .csvg{animation:cbob 1.8s ease-in-out infinite}.cstage.ready .lid{animation:clid 1.8s ease-in-out infinite}
+@keyframes cbob{50%{transform:translateY(-6px)}}@keyframes clid{0%,70%,100%{transform:none}80%{transform:translateY(-5px) rotate(-3deg)}90%{transform:translateY(-2px) rotate(2deg)}}
+.csvg.lend .rn{animation:rn 2s ease-in-out infinite}@keyframes rn{50%{fill:#fff;filter:drop-shadow(0 0 4px #c08cff)}}
+.cstage.shake .csvg{animation:cshk .8s linear}@keyframes cshk{0%,100%{transform:none}10%,50%,90%{transform:translateX(-7px) rotate(-4deg)}30%,70%{transform:translateX(7px) rotate(4deg)}}
+.cstage.open .lid{transform:translateY(-34px) rotate(-14deg) scaleY(.55)}.cstage.open .glow{opacity:1}
+.cstage.open .rays{opacity:1;animation:spin 6s linear infinite}
+.ctap{position:absolute;bottom:-2px;z-index:3;font:800 13px var(--body);color:var(--gold-hi);text-shadow:0 2px 0 #000;animation:cdp2 1.2s ease-in-out infinite}@keyframes cdp2{50%{opacity:.4}}
+.cfly{position:absolute;left:50%;top:42%;width:0;height:0;z-index:4}
+.coin{position:absolute;left:-9px;top:-9px;width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff6c8,#f3c040 45%,#a8761f);border:2px solid #6b4a12;animation:cfl 1.1s cubic-bezier(.2,.8,.4,1) both}
+@keyframes cfl{0%{transform:translate(0,20px) scale(.3);opacity:0}25%{opacity:1}100%{transform:translate(var(--x),var(--y)) scale(1) rotate(400deg);opacity:0}}
+.citem{position:absolute;left:-34px;top:-30px;width:68px;display:grid;justify-items:center;padding:6px 2px;border-radius:12px;background:rgba(20,12,6,.85);border:2px solid var(--gold-hi);box-shadow:0 0 16px rgba(243,210,122,.6);animation:cit .7s cubic-bezier(.3,1.6,.5,1) both}
+.citem svg{width:30px;height:30px}.citem b{font:800 14px var(--body);color:#fff}
+@keyframes cit{0%{transform:translate(0,30px) scale(.2);opacity:0}100%{transform:translate(var(--x),-92px) scale(1);opacity:1}}
 @keyframes wob{50%{transform:rotate(3deg)}}
 .sets{display:grid;gap:6px}
 .setrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,0,0,.28);border-radius:10px;padding:6px 10px;font-weight:700}
@@ -407,8 +424,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 if (location.protocol === 'file:') document.getElementById('loadMsg').innerHTML = 'Este jogo 3D precisa ser aberto por um endereço <b>http://</b> (GitHub Pages ou servidor local).<br>Abrir o arquivo com dois cliques não funciona.';
 else setTimeout(() => { const m = document.getElementById('loadMsg'); if (m && document.getElementById('loading')) m.textContent = 'Ainda carregando… se não avançar, recarregue a página.'; }, 25000);
 </script>
-<script src="config.js?v=21"></script>
+<script src="config.js?v=22"></script>
 <script src="lib/supabase.js"></script>
-<script type="module" src="app.js?v=21"></script>
+<script type="module" src="app.js?v=22"></script>
 </body>
 </html>
