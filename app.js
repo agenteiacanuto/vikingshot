@@ -1722,13 +1722,13 @@ function cineMina(e) {
 }
 /* colheita */
 const CAT_COL = { frutas: '#d8423a', legumes: '#ef8a2b', verduras: '#7fc04f', food: '#e2b84a' };
-function cineHarvest(i, f, rew) {
+function cineHarvest(i, f, rew, n = 1, names = []) {
   const g = fieldG[i], [x, z] = hexPos(...FIELDS[i]); g.userData.lock = true;
   const C = CROPS[f.c], crops = C.tree ? Array(6).fill((g.userData.crops || [])[0]).filter(Boolean) : (g.userData.crops || []).slice();
   const farmer = mkChar('Rogue_Hooded', .3); farmer.o.position.set(x - 1.1, 0, z + .7); scene.add(farmer.o);
   const basket = model('sack', .9); basket.position.set(x + .15, 0, z + .75); scene.add(basket);
   let picked = 0, nextPick = 1.6;
-  startCine({ kind: 'colheita', dur: 5.4, title: `Colheita de ${C.name.toLowerCase()}!`, actors: [farmer, basket],
+  startCine({ kind: 'colheita', dur: 5.4, title: n > 1 ? `Colheita de ${n} canteiros!` : `Colheita de ${C.name.toLowerCase()}!`, actors: [farmer, basket],
     keys: [{ t: 1.2, p: [x + 2, 1.8, z + 2.8], l: [x, .3, z] }, { t: 3.6, p: [x - 1.9, 1.7, z + 2.8], l: [x, .3, z] }, { t: 5.4, p: [x - 2.3, 2.6, z + 3.6], l: [x, .2, z] }],
     step(t, dt) {
       farmer.mixer.update(dt);
@@ -1745,7 +1745,7 @@ function cineHarvest(i, f, rew) {
       }
     },
     finish() { g.userData.lock = false; g.userData.sig = null; },
-    card: rewardCard('Colheita feita!', `${C.name} foi para a ${C.cat === 'food' ? 'comida da vila' : 'despensa'}`, rew) });
+    card: rewardCard(n > 1 ? `Colheita de ${n} canteiros!` : 'Colheita feita!', n > 1 ? `${names.join(', ')} · tudo guardado na vila e na despensa` : `${C.name} foi para a ${C.cat === 'food' ? 'comida da vila' : 'despensa'}`, rew).replace('data-a="close">Coletar</button>', `data-a="close">Coletar</button>${S.b.horta.lvl && fieldsOpen() > 1 ? '<button class="btn ghost" data-a="horta-open">Replantar</button>' : ''}`) });
 }
 /* curral */
 function cineCurral(rew) {
@@ -2761,11 +2761,15 @@ function plant(i, k, all) {
   idx.forEach(j => { S.fields[j] = { c: k, start: now, end: now + C.s * 1000 }; burstAt(...(() => { const [x, z] = hexPos(...FIELDS[j]); return [x, .3, z]; })(), '#7a5a32', 10, .03); });
   Snd.build(); save(); dirty = true; closeSheet();
 }
-function harvest(i) {
-  const f = S.fields[i]; if (!f || Date.now() < f.end || CINE || B || !restReady) return;
-  const C = CROPS[f.c], q = cropYield(f.c), rew = { [C.cat]: q };
-  gain(C.cat, q); dcount('colher'); S.stats.harvest = (S.stats.harvest || 0) + 1; S.fields[i] = null; save(); dirty = true;
-  cineHarvest(i, f, rew);
+const ripeFields = () => S.fields.map((f, j) => j).filter(j => j < fieldsOpen() && S.fields[j] && Date.now() >= S.fields[j].end);
+function harvest(i) { // colhe todos os canteiros prontos de uma vez
+  if (CINE || B) return; if (!restReady) { toast('Carregando… só um instante'); loadRest().then(() => harvest(i)); return; } if (!fieldG.length) refreshFields(Date.now()); if (i != null) i = +i; if (i == null || !S.fields[i] || Date.now() < S.fields[i].end) i = ripeFields()[0];
+  const f = S.fields[i]; if (!f || Date.now() < f.end) return;
+  const all = ripeFields(), rew = {}, names = [];
+  all.forEach(j => { const F = S.fields[j], C = CROPS[F.c], q = cropYield(F.c); rew[C.cat] = (rew[C.cat] || 0) + q; gain(C.cat, q); if (!names.includes(C.name)) names.push(C.name); S.fields[j] = null;
+    if (j !== i) { const [x, z] = hexPos(...FIELDS[j]); burstAt(x, .4, z, '#7fc04f', 12, .04); } });
+  dcount('colher', all.length); S.stats.harvest = (S.stats.harvest || 0) + all.length; save(); dirty = true; closeSheet();
+  cineHarvest(i, f, rew, all.length, names);
 }
 function hortaHTML() {
   const open = fieldsOpen(), now = Date.now(), L = S.b.horta.lvl;
@@ -2774,6 +2778,7 @@ function hortaHTML() {
   let h = `<div class="stat"><span>Canteiros</span><span>${open} de 5</span></div><div class="mlist">`;
   for (let j = 0; j < open; j++) { const f = S.fields[j]; h += `<button class="mitem fld-row" data-a="field" data-v="${j}">${j + 1}. ${f ? `${CROPS[f.c].name} · ${now >= f.end ? '<b class="ok">pronto para colher</b>' : fmtT((f.end - now) / 1000)}` : 'vazio · toque para plantar'}</button>`; }
   h += '</div>';
+  { const r = ripeFields().length; if (r) h += `<div class="actions"><button class="btn" data-a="harvest-all">Colher tudo (${r} canteiro${r > 1 ? 's' : ''})</button></div>`; }
   if (empty > 1) h += `<p class="sub" style="margin-top:10px">Plantar em todos os ${empty} canteiros vazios:</p><div class="crops">${Object.entries(CROPS).filter(([, C]) => C.L <= L).map(([k, C]) => `<button class="crop" data-a="plant-all" data-k="${k}"><b>${C.name}</b><span>${icoSVG(C.cat)} ${cropYield(k)} · ${fmtT(C.s)}</span></button>`).join('')}</div>`;
   return h;
 }
@@ -2818,6 +2823,8 @@ sheet.addEventListener('click', e => {
     case 'field': openField(v); break;
     case 'plant': plant(v, k); break;
     case 'plant-all': plant(0, k, true); break;
+    case 'harvest-all': Snd.tap(); harvest(); break;
+    case 'horta-open': Snd.tap(); openBuilding(plotById('horta')); break;
     case 'crop-speed': { const f = S.fields[v], c = Math.ceil((f.end - Date.now()) / 60000); if (S.runes < c) { toast('Runas insuficientes'); Snd.no(); break; } S.runes -= c; f.end = Date.now(); f.start = Math.min(f.start, f.end - 1000); harvest(v); break; }
     case 'curral-get': curralCollect(); break;
     case 'treasure': openTreasure(); break;
@@ -3627,7 +3634,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 23;
+const GAME_VERSION = 24;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
