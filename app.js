@@ -3484,20 +3484,63 @@ const today = () => { const d = new Date(); return d.getFullYear() + '-' + Strin
 const isWeekend = () => { const d = new Date().getDay(); return d === 0 || d === 6; };
 const CHEST = [{ runes: 5, food: 300 }, { runes: 8, wood: 400 }, { runes: 10, stone: 400 }, { runes: 12, iron: 200 }, { runes: 15, food: 600, wood: 600 }, { runes: 20, ouro: 1 }, { runes: 30, ouro: 3, rubi: 1 }];
 function chestReady() { return S.daily.last !== today(); }
-function openChest() {
-  sheetFor = null; const day = S.daily.next || 1;
-  openSheet(`<h2>Baú diário</h2><p class="sub">Volte todo dia: no 7º dia seguido o baú é lendário</p>
-    <div class="chestrow">${CHEST.map((r, i) => `<div class="cd${i + 1 < day ? ' got' : i + 1 === day ? ' now' : ''}"><b>Dia ${i + 1}</b>${Object.entries(r).map(([k, v]) => `<span>${icoSVG(k)}${fmt(v)}</span>`).join('')}</div>`).join('')}</div>
-    ${chestReady() ? `<div class="chest"><div class="lid"></div><div class="box"></div></div><div class="actions"><button class="btn" data-a="chest">Abrir o baú do dia ${day}</button></div>` : `<p class="desc">Você já abriu o baú de hoje. Volte amanhã para o dia ${day}!</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`}`);
+const chestTier = d => d >= 7 ? 'lend' : d >= 4 ? 'ferro' : 'madeira';
+function chestSVG(t, mini) {
+  const C = { madeira: { w1: '#a8743f', w2: '#6b4527', band: '#7b8288', bandHi: '#b9c0c5', trim: '#d9a441' }, ferro: { w1: '#8a5230', w2: '#4f2c17', band: '#c9962f', bandHi: '#ffe08a', trim: '#f3d27a' }, lend: { w1: '#5b3a8a', w2: '#2c1a4a', band: '#e8b23a', bandHi: '#fff1b0', trim: '#ffe08a' } }[t];
+  const id = 'c' + Math.random().toString(36).slice(2, 7);
+  return `<svg class="csvg ${t}${mini ? ' mini' : ''}" viewBox="0 0 200 180"><defs>
+    <linearGradient id="${id}w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.w1}"/><stop offset="1" stop-color="${C.w2}"/></linearGradient>
+    <linearGradient id="${id}b" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${C.band}"/><stop offset=".45" stop-color="${C.bandHi}"/><stop offset="1" stop-color="${C.band}"/></linearGradient>
+    <radialGradient id="${id}g"><stop offset="0" stop-color="#fff8d8"/><stop offset=".5" stop-color="#ffd86a" stop-opacity=".8"/><stop offset="1" stop-color="#ffb000" stop-opacity="0"/></radialGradient></defs>
+    <ellipse cx="100" cy="168" rx="82" ry="9" fill="#000" opacity=".35"/>
+    <g class="glow"><circle cx="100" cy="88" r="70" fill="url(#${id}g)"/></g>
+    <g class="body">
+      <rect x="22" y="84" width="156" height="80" rx="6" fill="url(#${id}w)" stroke="#1e1208" stroke-width="4"/>
+      <path d="M26 106h148M26 128h148M26 148h148" stroke="#000" stroke-opacity=".28" stroke-width="2"/>
+      <path d="M40 92v66M88 92v8M120 140v14M150 110v40" stroke="#fff" stroke-opacity=".08" stroke-width="2"/>
+      <rect x="44" y="84" width="16" height="80" fill="url(#${id}b)" stroke="#1e1208" stroke-width="2.5"/>
+      <rect x="140" y="84" width="16" height="80" fill="url(#${id}b)" stroke="#1e1208" stroke-width="2.5"/>
+      <rect x="22" y="84" width="156" height="9" fill="${C.trim}" stroke="#1e1208" stroke-width="2.5"/>
+      <circle cx="52" cy="112" r="3" fill="#1e1208"/><circle cx="52" cy="140" r="3" fill="#1e1208"/><circle cx="148" cy="112" r="3" fill="#1e1208"/><circle cx="148" cy="140" r="3" fill="#1e1208"/>
+      <path d="M82 92h36v30l-18 12-18-12z" fill="url(#${id}b)" stroke="#1e1208" stroke-width="2.5"/>
+      <circle cx="100" cy="106" r="5" fill="#1e1208"/><path d="M98 108h4l1.5 12h-7z" fill="#1e1208"/>
+      ${t === 'lend' ? '<text class="rn" x="100" y="156" text-anchor="middle" font-size="15" fill="#c9a8ff" letter-spacing="6">ᚠᚢᚦᚨᚱ</text>' : ''}
+    </g>
+    <g class="lid">
+      <path d="M22 86V62c0-30 34-44 78-44s78 14 78 44v24z" fill="url(#${id}w)" stroke="#1e1208" stroke-width="4"/>
+      <path d="M30 60c4-22 34-34 70-34s66 12 70 34" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="3"/>
+      <path d="M44 86V40c4-6 10-10 16-12v58z" fill="url(#${id}b)" stroke="#1e1208" stroke-width="2.5"/>
+      <path d="M156 86V40c-4-6-10-10-16-12v58z" fill="url(#${id}b)" stroke="#1e1208" stroke-width="2.5"/>
+      <rect x="20" y="78" width="160" height="10" rx="2" fill="${C.trim}" stroke="#1e1208" stroke-width="2.5"/>
+      <path d="M88 78h24v14H88z" fill="url(#${id}b)" stroke="#1e1208" stroke-width="2.5"/>
+      ${t === 'lend' ? '<path d="M100 34l6 12 13 2-9 9 2 13-12-6-12 6 2-13-9-9 13-2z" fill="#ffe08a" stroke="#6b4a12" stroke-width="2"/>' : t === 'ferro' ? '<circle cx="100" cy="52" r="10" fill="#c9962f" stroke="#1e1208" stroke-width="2.5"/><path d="M100 45v14M93 52h14" stroke="#1e1208" stroke-width="2.5"/>' : ''}
+    </g></svg>`;
 }
+function openChest() {
+  sheetFor = null; const day = S.daily.next || 1, t = chestTier(day), ready = chestReady();
+  openSheet(`<h2>${t === 'lend' ? 'Baú Lendário' : 'Baú do Jarl'}</h2><p class="sub">Volte todo dia seguido: o baú fica mais rico e no 7º dia é lendário</p>
+    <div class="cstage ${t}${ready ? ' ready' : ''}" ${ready ? 'data-a="chest"' : ''}><div class="rays"></div>${chestSVG(t)}<div class="cfly"></div>${ready ? '<div class="ctap">Toque para abrir</div>' : ''}</div>
+    <div class="chestrow">${CHEST.map((r, i) => { const d = i + 1, st = d < day ? 'got' : d === day ? (ready ? 'now' : 'got') : ''; return `<div class="cd ${st}${d === 7 ? ' l7' : ''}"><b>Dia ${d}</b>${chestSVG(chestTier(d), true)}<div class="cr">${Object.entries(r).map(([k, v]) => `<span>${icoSVG(k)}${fmt(v)}</span>`).join('')}</div>${d < day || (d === day && !ready) ? '<i class="ck">✓</i>' : ''}</div>`; }).join('')}</div>
+    ${ready ? `<div class="actions"><button class="btn" data-a="chest">Abrir o baú do dia ${day}</button></div>` : `<p class="desc" style="text-align:center">Baú de hoje já aberto. Volte amanhã para o dia ${day}!</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`}`);
+}
+let chestBusy = false;
 function claimChest() {
-  if (!chestReady()) return; const y = new Date(Date.now() - 864e5), yd = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+  if (!chestReady() || chestBusy) return; const y = new Date(Date.now() - 864e5), yd = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
   let day = S.daily.last === yd ? (S.daily.next || 1) : 1; // perdeu um dia: volta ao 1
   const r = CHEST[day - 1]; for (const k in r) gain(k, r[k]);
-  S.daily.last = today(); S.daily.next = day >= 7 ? 1 : day + 1; passXP(20); Snd.chime(); save(); dirty = true;
-  const el = sheet.querySelector('.chest'); if (el) el.classList.add('open');
-  setTimeout(() => openSheet(rewardCard(day === 7 ? 'Baú lendário!' : `Baú do dia ${day}`, 'Volte amanhã para o próximo', r)), 700);
+  S.daily.last = today(); S.daily.next = day >= 7 ? 1 : day + 1; passXP(20); save(); dirty = true;
+  const st = sheet.querySelector('.cstage'); if (!st) { openSheet(rewardCard(day === 7 ? 'Baú lendário!' : `Baú do dia ${day}`, 'Volte amanhã para o próximo', r)); return; }
+  chestBusy = true; st.classList.remove('ready'); st.removeAttribute('data-a'); sheet.querySelectorAll('[data-a="chest"]').forEach(b => b.disabled = true);
+  st.classList.add('shake'); const tp = st.querySelector('.ctap'); if (tp) tp.remove(); Snd.tap(); setTimeout(() => Snd.tap(), 250); setTimeout(() => Snd.tap(), 500);
+  setTimeout(() => {
+    st.classList.remove('shake'); st.classList.add('open'); Snd.chime(); if (day === 7) setTimeout(() => Snd.done(), 200);
+    const fly = st.querySelector('.cfly'), items = Object.entries(r);
+    for (let i = 0; i < 14; i++) { const c = document.createElement('i'); c.className = 'coin'; c.style.setProperty('--x', (Math.random() * 220 - 110) + 'px'); c.style.setProperty('--y', (-60 - Math.random() * 90) + 'px'); c.style.animationDelay = (Math.random() * .25) + 's'; fly.appendChild(c); }
+    items.forEach(([k, v], i) => { const e = document.createElement('div'); e.className = 'citem'; e.style.setProperty('--x', ((i - (items.length - 1) / 2) * 78) + 'px'); e.style.animationDelay = (.25 + i * .15) + 's'; e.innerHTML = `${icoSVG(k)}<b>+${fmt(v)}</b>`; fly.appendChild(e); });
+  }, 800);
+  setTimeout(() => { chestBusy = false; if (sheet.querySelector('.cstage')) openSheet(rewardCard(day === 7 ? 'Baú lendário!' : `Baú do dia ${day}`, 'Volte amanhã para o próximo', r)); }, 3000);
 }
+/* ========== Missões do dia ========== */
 const DQ_POOL = [
   { k: 'coletar', n: 5, t: 'Colete recursos 5 vezes', r: { runes: 5 } },
   { k: 'obras', n: 2, t: 'Comece 2 obras ou melhorias', r: { wood: 300 } },
@@ -3584,7 +3627,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 21;
+const GAME_VERSION = 22;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -3607,4 +3650,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && !B && !CINE) { reloaded = true; save(); location.reload(); } });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); setInterval(() => r.update(), 5 * 60e3); }).catch(() => {}));
 }
-window.__vs = { openTavern, openHeroes, openHero, startClanBoss, openClan, exportVila, packVila, unpackVila, startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { openChest, openTavern, openHeroes, openHero, startClanBoss, openClan, exportVila, packVila, unpackVila, startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
