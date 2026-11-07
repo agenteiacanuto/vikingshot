@@ -54,3 +54,21 @@ create policy "cria os proprios pontos" on public.event_scores for insert with c
 drop policy if exists "atualiza os proprios pontos" on public.event_scores;
 create policy "atualiza os proprios pontos" on public.event_scores for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create index if not exists event_scores_week on public.event_scores (week, pts desc);
+
+-- Arena: equipe de defesa de cada jogador (rode uma vez)
+create table if not exists public.arena (
+  user_id uuid primary key references auth.users on delete cascade,
+  jarl text not null default 'Jarl' check (char_length(jarl) between 1 and 18),
+  rating int not null default 1000 check (rating between 0 and 100000),
+  power int not null default 0,
+  snap jsonb not null check (pg_column_size(snap) < 20000),
+  updated_at timestamptz not null default now()
+);
+alter table public.arena enable row level security;
+drop policy if exists "arena publica" on public.arena;
+create policy "arena publica" on public.arena for select using (true);
+drop policy if exists "cria a propria arena" on public.arena;
+create policy "cria a propria arena" on public.arena for insert with check (auth.uid() = user_id);
+drop policy if exists "atualiza a propria arena" on public.arena;
+create policy "atualiza a propria arena" on public.arena for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create index if not exists arena_rating on public.arena (rating);
