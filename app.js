@@ -71,7 +71,9 @@ const DEF = {
   curral:  { name: 'Curral', size: 2, time: 14, cost: { wood: 160, stone: 50 }, unlock: 2,
              desc: 'Galinhas botam ovos, vacas e cabras dão leite. Os cães de guarda ajudam a defender a vila. Cada nível traz mais animais.' },
   ferreiro:{ name: 'Ferreiro', size: 2, time: 18, cost: { wood: 180, stone: 140 }, unlock: 4,
-             desc: 'Forja machados e cotas de malha. Cada nível dá +10% de vida e dano a todas as tropas.' },
+             desc: 'Fabrica pregos, fechaduras, armadilhas, escudos e espadas com o ferro da mina. Cada nível dá +10% de vida e dano a todas as tropas e libera novas peças.' },
+  casa:    { name: 'Casa de Moradores', size: 1, time: 8, cost: { wood: 90, stone: 30 }, unlock: 1,
+             desc: 'Lar das famílias vikings. Cada casa abriga mais moradores; são eles que trabalham como lenhadores, mineiros e caçadores. Casais se casam e têm filhos que crescem e viram novos trabalhadores.' },
   torre:   { name: 'Torre de Arqueiros', size: 1, time: 14, cost: { wood: 120, stone: 160 }, unlock: 3,
              desc: 'Atira flechas sozinha nos draugr que chegam perto. Cada nível aumenta o dano.' }
 };
@@ -92,18 +94,21 @@ const PLOTS = [
   { id: 'cabana', type: 'cabana', c: 12, r: 4 },
   { id: 'taverna', type: 'taverna', c: 9, r: 4 },
   { id: 'runas', type: 'runas', c: 5, r: 7 },
-  { id: 'curral', type: 'curral', c: 12, r: 7 }
+  { id: 'curral', type: 'curral', c: 12, r: 7 },
+  { id: 'casa1', type: 'casa', c: 8, r: 6, unlock: 1 }, { id: 'casa2', type: 'casa', c: 6, r: 6, unlock: 2 }, { id: 'casa3', type: 'casa', c: 5, r: 5, unlock: 3 },
+  { id: 'casa4', type: 'casa', c: 9, r: 7, unlock: 4 }, { id: 'casa5', type: 'casa', c: 12, r: 5, unlock: 5 }, { id: 'casa6', type: 'casa', c: 5, r: 3, unlock: 6 }
 ];
 const plotById = id => PLOTS.find(p => p.id === id);
 const costFor = (type, L) => {
   const d = DEF[type], f = Math.pow(1.55, L - 1), out = {};
   for (const k in d.cost) out[k] = Math.round(d.cost[k] * f / 5) * 5;
   if (L >= 4 && type !== 'mina') out.iron = Math.round((d.cost.wood || d.cost.food || 60) * .35 * Math.pow(1.5, L - 4) / 5) * 5;
+  if (out.wood && L > 1 && typeof S !== 'undefined' && S.items && (S.items.pregos || 0) >= nailNeed(L)) out.wood = Math.round(out.wood * .85 / 5) * 5; // pregos poupam madeira
   if (L >= 8) { const big = Math.max(...Object.values(out)); out.stone = Math.round(((out.stone || 0) + big * .25 * (L - 7)) / 5) * 5; } // níveis altos: pedra lavrada (as gemas ficam para as relíquias)
   return out;
 };
 const timeFor = (type, L) => Math.round(DEF[type].time * Math.pow(1.6, L - 1) * (1 - relic('build')) * (1 - .04 * RS('build')));
-const rateFor = (type, L) => L > 0 && DEF[type].prod ? DEF[type].rate * Math.pow(1.3, L - 1) * (1 + relic('prod')) * (1 + .05 * RS('prod')) : 0; // por hora
+const rateFor = (type, L) => L > 0 && DEF[type].prod ? DEF[type].rate * Math.pow(1.3, L - 1) * (1 + relic('prod')) * (1 + .05 * RS('prod')) * happyMul() : 0; // por hora
 const have = k => k.startsWith('h:') ? hs(k.slice(2)).sh : k === 'runes' ? S.runes : TREAS.includes(k) ? (S.gems[k] || 0) : PANTRY.includes(k) ? (S.pantry[k] || 0) : (S.res[k] || 0);
 function spend(c) { for (const k in c) { if (k.startsWith('h:')) hs(k.slice(2)).sh -= c[k]; else if (k === 'runes') S.runes -= c[k]; else if (TREAS.includes(k)) S.gems[k] -= c[k]; else if (PANTRY.includes(k)) S.pantry[k] -= c[k]; else S.res[k] -= c[k]; } }
 function gain(k, v) { // soma respeitando o limite do armazém
@@ -155,7 +160,8 @@ const armyCap = () => S.b.quartel.lvl ? 4 + 2 * S.b.quartel.lvl + 2 * RS('army')
 const armyCount = () => Object.values(S.army).reduce((a, b) => a + b, 0);
 const queued = () => S.train ? S.train.left : 0;
 const smithBonus = () => 1 + .1 * S.b.ferreiro.lvl;
-const troopHpF = () => smithBonus() * (1 + relic('hp')) * (1 + .05 * (S.armor || 0)) * (1 + .05 * RS('thp')), troopDmgF = () => smithBonus() * (1 + relic('dmg')) * (1 + .05 * RS('tdmg'));
+const kitShare = k => { const n = armyCount(); return n ? Math.min(1, (S.items[k] || 0) / n) : 0; };
+const troopHpF = () => smithBonus() * (1 + relic('hp')) * (1 + .05 * (S.armor || 0)) * (1 + .05 * RS('thp')) * (1 + .12 * kitShare('escudo')), troopDmgF = () => smithBonus() * (1 + relic('dmg')) * (1 + .05 * RS('tdmg')) * (1 + .12 * kitShare('espada'));
 const towerDmg = L => Math.round(16 * Math.pow(1.25, L - 1) * (1 + .08 * RS('tower')));
 const heroStats = () => { const L = S.b.salao.lvl, f = 1 + relic('hero'); return { hp: (450 + 90 * L) * f, dmg: (28 + 6 * L) * f }; };
 function waveDef(w) {
@@ -188,6 +194,8 @@ const MISSIONS = [
   { t: 'Construa a Horta e Pomar', ok: () => lv('horta') >= 1, r: { wood: 200 } },
   { t: 'Plante e colha na Horta', ok: () => (S.stats.harvest || 0) >= 1, r: { runes: 10 } },
   { t: 'Mande os lenhadores cortar madeira', ok: () => (S.stats.expLenha || 0) >= 1, r: { food: 300 } },
+  { t: 'Construa uma Casa de Moradores', ok: () => houses() >= 1, r: { food: 300 } },
+  { t: 'Celebre um casamento na vila', ok: () => (S.pop.wedTot || 0) >= 1, r: { runes: 15 } },
   { t: 'Melhore a Serraria ao nível 2', ok: () => lv('serraria') >= 2, r: { runes: 10 } },
   { t: 'Construa o Armazém', ok: () => lv('armazem') >= 1, r: { stone: 200 } },
   { t: 'Construa a segunda Fazenda', ok: () => lv('faz2') >= 1, r: { wood: 300 } },
@@ -212,6 +220,7 @@ const MISSIONS = [
   { t: 'Colete 500 de ferro', ok: () => S.stats.iron >= 500, r: { wood: 600 } },
   { t: 'Melhore o Salão do Jarl ao nível 4', ok: () => lv('salao') >= 4, r: { runes: 40 } },
   { t: 'Construa o Ferreiro', ok: () => lv('ferreiro') >= 1, r: { iron: 200 } },
+  { t: 'Fabrique pregos no Ferreiro', ok: () => (S.stats.forged || 0) >= 1, r: { iron: 200 } },
   { t: 'Melhore o Quartel ao nível 4 (libera Huscarls)', ok: () => lv('quartel') >= 4, r: { food: 800 } },
   { t: 'Vença a Onda 5', ok: () => S.wave > 5, r: { runes: 30 } },
   { t: 'Melhore a Serraria ao nível 5', ok: () => lv('serraria') >= 5, r: { stone: 800 } },
@@ -255,6 +264,24 @@ if (!S.patrol) S.patrol = Date.now();
 if (!S.tower) S.tower = { best: 0 };
 if (!S.tot) S.tot = {};
 if (!S.ach) S.ach = {};
+if (!S.pop) S.pop = { n: 6, wed: 1, kids: [], nb: 0, arr: 0, wedTot: 0 };
+if (!S.items) S.items = {};
+if (S.forge === undefined) S.forge = null;
+const houses = () => PLOTS.filter(p => p.type === 'casa' && S.b[p.id].lvl).length;
+const houseCap = L => L ? 2 + L : 0;
+const popCap = () => 6 + PLOTS.filter(p => p.type === 'casa').reduce((a, p) => a + houseCap(S.b[p.id].lvl), 0);
+const nailNeed = L => 4 * L;
+const busyWorkers = () => ['lenha', 'mina', 'caca'].reduce((a, k) => a + (S.exp && S.exp[k] && Date.now() < S.exp[k].end ? S.exp[k].n : 0), 0);
+const freeAdults = () => Math.max(0, (S.pop ? S.pop.n : 6) - busyWorkers());
+const singles = () => S.pop.n - 2 * S.pop.wed;
+const locksIn = () => Math.min(houses(), S.items.fechadura || 0);
+function happiness() {
+  if (!S.pop) return 50; const pv = PANTRY.filter(k => (S.pantry[k] || 0) >= 1).length;
+  let h = 50 + pv * 5 + Math.min(20, 2 * (S.b.taverna.lvl || 0)) + 3 * locksIn() + (S.pop.wed ? 5 : 0);
+  if (S.pop.n + S.pop.kids.length > popCap()) h -= 20; return Math.max(0, Math.min(100, Math.round(h)));
+}
+const happyMul = () => typeof S === 'undefined' || !S || !S.pop ? 1 : 1 + (happiness() - 50) / 500;
+
 setTimeout(() => { if (typeof HERO_IDS === 'undefined') return; let any = 0; HERO_IDS.forEach(id => { const h = hs(id), need = RAR[HEROES[id].rar].need; if (!h.lvl && h.sh >= need) { h.sh -= need; h.lvl = 1; h.st = 1; if (S.team.length < teamSlots()) S.team.push(id); any = 1; toast(`${HEROES[id].name} entrou para a sua saga!`); } }); if (any) { save(); dirty = true; } }, 3000);
 if (!S.cb) S.cb = { w: 0, got: [], d: '', n: 0, best: 0 };
 if (!S.gfx) S.gfx = 'auto';
@@ -326,7 +353,7 @@ const EXP = {
   caca:  { name: 'Caçadores', one: 'caçador', plot: 'cabana', spot: [15, 4], rate: 2.5, title: 'Os caçadores cercam o alce!' }
 };
 const DURS = [{ s: 15, t: '15 s' }, { s: 60, t: '1 min' }, { s: 300, t: '5 min' }, { s: 1800, t: '30 min' }];
-const workersMax = k => Math.min(6, 1 + (k === 'lenha' ? S.b.serraria.lvl : k === 'caca' ? S.b.cabana.lvl : S.b.pedreira.lvl));
+const workersMax = k => Math.max(1, Math.min(6, 1 + (k === 'lenha' ? S.b.serraria.lvl : k === 'caca' ? S.b.cabana.lvl : S.b.pedreira.lvl), freeAdults()));
 const mealsFor = (n, s) => Math.max(1, Math.ceil(n * s / 300));
 const MEAL_FOOD = 20; // sem despensa, cada refeição sai por 20 de comida
 const mealsHave = () => PANTRY.reduce((a, k) => a + Math.floor(S.pantry[k] || 0), 0);
@@ -569,7 +596,7 @@ function upgrade(p) {
   if (requirement(p, L)) return;
   if (busyBuilders().length >= 2) { toast('Os dois construtores estão ocupados'); Snd.no(); return; }
   if (!canAfford(c)) { toast('Faltam recursos'); Snd.no(); return; }
-  spend(c);
+  const nails = L > 1 && costFor(p.type, L).wood && (S.items.pregos || 0) >= nailNeed(L); spend(c); if (nails) S.items.pregos -= nailNeed(L);
   b.end = Date.now() + timeFor(p.type, L) * 1000; b.to = L; dcount('obras');
   Snd.build(); burst(p, '#e8c27a', 14); save(); dirty = true; closeSheet();
 }
@@ -712,10 +739,7 @@ function instanced(name, mats, cast) {
 }
 let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const plotAt = new Set(PLOTS.map(p => p.c + ',' + p.r));
-const DECOR_HOMES = [
-  { c: 8, r: 6, m: 'building_home_A_red', lv: 2 }, { c: 6, r: 6, m: 'building_home_B_red', lv: 3 }, 
-  { c: 8, r: 4, m: 'building_well_red', lv: 5 }, { c: 5, r: 5, m: 'building_home_A_red', lv: 6 }, { c: 9, r: 7, m: 'building_home_B_red', lv: 7 },
-  { c: 12, r: 5, m: 'building_home_A_red', lv: 8 }, { c: 5, r: 3, m: 'building_home_B_red', lv: 9 }];
+const DECOR_HOMES = [{ c: 8, r: 4, m: 'building_well_red', lv: 5 }]; // as casas viraram terrenos de Casa de Moradores
 DECOR_HOMES.forEach(h => plotAt.add(h.c + ',' + h.r));
 function buildTerrain() {
   const M = {}; const add = (n, x, z, rot = 0, s = 1, y = 0) => { (M[n] = M[n] || []).push(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), rot), new THREE.Vector3(s, s, s))); };
@@ -742,7 +766,7 @@ function buildTerrain() {
 
 /* ---------- prédios ---------- */
 const plotGroups = {};
-const PLOT_H = { taverna: 1.8, runas: 1.2, cabana: 1.2, muralha: 1.3, horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
+const PLOT_H = { casa: 1.3, taverna: 1.8, runas: 1.2, cabana: 1.2, muralha: 1.3, horta: .9, curral: 1.1, salao: 4.4, fazenda: 1.4, serraria: 1.6, pedreira: 1.6, mina: 1.7, armazem: 1.6, quartel: 2.2, ferreiro: 1.6, torre: 2.8 };
 function put(g, n, x = 0, z = 0, rot = 0, s = 1) { const o = model(n, s); o.position.set(x, 0, z); o.rotation.y = rot; g.add(o); return o; }
 function refreshPlot(p) {
   let g = plotGroups[p.id];
@@ -775,6 +799,7 @@ function refreshPlot(p) {
       const hide = mesh(new THREE.BoxGeometry(.32, .3, .02), '#a8743f', 0, .32, .03); rack.add(hide); g.add(rack);
       { const ant = new THREE.Group(); ant.position.set(0, .95, .55); ant.scale.setScalar(tier >= 2 ? 1.5 : 1.1); [-1, 1].forEach(sd => { const b = mesh(new THREE.CylinderGeometry(.015, .02, .3, 4), '#e8d6a8', sd * .1, .12, 0); b.rotation.z = -sd * .6; ant.add(b); const b2 = mesh(new THREE.CylinderGeometry(.012, .015, .15, 4), '#e8d6a8', sd * .2, .22, 0); b2.rotation.z = sd * .3; ant.add(b2); }); g.add(ant); }
       break; }
+    case 'casa': put(g, tier >= 2 ? 'building_home_B_red' : 'building_home_A_red', 0, 0, 0, tier >= 3 ? 1.05 : .9); if (tier >= 2) put(g, 'barrel', .62, .5, .3, .55); if (tier >= 3) { put(g, 'sack', -.6, .5, 0, .7); put(g, 'flag_red', .5, -.45, 0, 1); } break;
     case 'taverna': put(g, 'building_tavern_red'); put(g, 'barrel', -.75, .55, 0, .65); if (tier >= 2) put(g, 'barrel', .75, .6, .4, .6); if (tier >= 3) put(g, 'flag_red', .6, 1.2, -.3, 1.4); break;
     case 'runas': {
       const n = 6 + (tier - 1) * 2, glow = new THREE.MeshBasicMaterial({ color: '#b59cff' });
@@ -2378,7 +2403,8 @@ function renderSheet() {
   if (p.type === 'cabana' && L) html += expHTML('caca');
   if (p.type === 'taverna' && L) html += `<div class="actions"><button class="btn" data-a="tavern">Recrutar heróis</button><button class="btn ghost" data-a="heroes">Ver heróis</button></div>`;
   if (p.type === 'runas') html += runasHTML();
-  if (p.type === 'ferreiro' && L) html += armorHTML();
+  if (p.type === 'ferreiro' && L) html += forgeHTML() + armorHTML();
+  if (p.type === 'casa' || p.type === 'salao') html += popHTML(p.type === 'casa' ? p : null);
   if (p.type === 'horta') html += hortaHTML();
   if (p.type === 'curral') html += curralHTML();
   if (b.end) {
@@ -2389,7 +2415,7 @@ function renderSheet() {
     html += `<p class="sub">Nível máximo desta etapa.</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`;
   } else {
     const c = costFor(p.type, L + 1), req = requirement(p, L + 1), busy = busyBuilders().length >= 2;
-    html += `<p class="sub" style="margin-top:10px">${L ? 'Melhorar para nível ' + (L + 1) : 'Construir'} · ${fmtT(timeFor(p.type, L + 1))}</p>${costHTML(c)}
+    html += `<p class="sub" style="margin-top:10px">${L ? 'Melhorar para nível ' + (L + 1) : 'Construir'} · ${fmtT(timeFor(p.type, L + 1))}</p>${costHTML(c)}${L >= 1 && c.wood && (S.items.pregos || 0) >= nailNeed(L + 1) ? `<p class="ok" style="margin:2px 0">Usando ${nailNeed(L + 1)} pregos do Ferreiro: −15% de madeira</p>` : ''}
       ${req ? `<p class="req">${req}</p>` : busy ? '<p class="req">Os dois construtores estão ocupados</p>' : !canAfford(c) ? `<p class="req">${missingTxt(c)}</p>` : ''}
       <div class="actions"><button class="btn" data-a="up" ${req || busy || !canAfford(c) ? 'disabled' : ''}>${L ? 'Melhorar' : 'Construir'}</button><button class="btn ghost" data-a="close">Fechar</button></div>`;
   }
@@ -2691,12 +2717,14 @@ const canFeed = n => Math.max(0, n - mealsHave()) * MEAL_FOOD <= S.res.food;
 function startExp(k) {
   const sel = Life.sel[k], n = Math.min(sel.n, workersMax(k)), s = DURS[sel.d].s, meals = mealsFor(n, s);
   if (S.exp[k]) return;
+  if (freeAdults() < n) { toast(freeAdults() ? `Só ${freeAdults()} morador${freeAdults() > 1 ? 'es' : ''} livre${freeAdults() > 1 ? 's' : ''}: construa casas e celebre casamentos` : 'Nenhum morador livre agora: espere as outras expedições voltarem'); Snd.no(); return; }
   if (!canFeed(meals)) { toast('Falta comida para os trabalhadores'); Snd.no(); return; }
   const fed = varietyOk(); payMeals(meals);
   const rew = expYield(k, n, s, fed), now = Date.now();
   S.exp[k] = { n, s, start: now, end: now + s * 1000, rew, gems: k === 'mina' ? rollGems(n, s) : null, fed };
   if (k === 'caca') { // lobos e troféu decididos na saída
-    const e = S.exp[k]; e.wolf = Math.random() < (herd().cao ? .1 : .25) * Math.min(1, .5 + s / 120);
+    const e = S.exp[k]; if ((S.items.armadilha || 0) >= 1) { S.items.armadilha--; e.trap = 1; for (const r in e.rew) e.rew[r] = Math.round(e.rew[r] * 1.3); }
+    e.wolf = Math.random() < (herd().cao ? .1 : .25) * (e.trap ? .5 : 1) * Math.min(1, .5 + s / 120);
     if (e.wolf) for (const r in e.rew) e.rew[r] = Math.max(1, Math.round(e.rew[r] * .7));
     if (Math.random() < Math.min(.25, .04 + s / 3600 * .1) || !S.stats.trofeuFirst && (S.stats.expCaca || 0) >= 2) { e.gems = { trofeu: 1 }; }
   }
@@ -2727,6 +2755,7 @@ function expHTML(k) {
   const sel = Life.sel[k]; sel.n = Math.max(1, Math.min(sel.n, workersMax(k)));
   const s = DURS[sel.d].s, meals = mealsFor(sel.n, s), fed = varietyOk(), y = expYield(k, sel.n, s, fed), fromPantry = Math.min(meals, mealsHave()), food = (meals - fromPantry) * MEAL_FOOD;
   h += `<div class="exprow"><span>Trabalhadores</span><div class="stepper"><button data-a="exp-n" data-k="${k}" data-v="-1" ${sel.n <= 1 ? 'disabled' : ''}>−</button><b>${sel.n}</b><button data-a="exp-n" data-k="${k}" data-v="1" ${sel.n >= workersMax(k) ? 'disabled' : ''}>+</button></div></div>
+    <p class="sub" style="margin:2px 0">Moradores livres: ${freeAdults()} de ${S.pop.n}${freeAdults() < 2 ? ' · construa casas e celebre casamentos para ter mais' : ''}${k === 'caca' ? ` · armadilhas: ${S.items.armadilha || 0}${S.items.armadilha ? ' (+30% e menos lobos)' : ''}` : ''}</p>
     <div class="durs">${DURS.map((d, i) => `<button data-a="exp-d" data-k="${k}" data-v="${i}" class="${i === sel.d ? 'on' : ''}">${d.t}</button>`).join('')}</div>
     <div class="exprow"><span>Refeições</span><span>${icoSVG('meal')} ${meals}${fromPantry < meals ? ` <small>(${fromPantry} da despensa + ${fmt(food)} comida)</small>` : ' <small>da despensa</small>'}</span></div>
     <div class="exprow"><span>Traz</span><span class="costs inline">${Object.entries(y).map(([r, v]) => `<span class="cost">${icoSVG(r)}${fmt(v)}</span>`).join('')}${k === 'mina' ? `<span class="cost">${icoSVG('ouro')}?</span>` : ''}</span></div>
@@ -3156,6 +3185,86 @@ function skillFx(u) {
   el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); skbT = setTimeout(() => el.classList.remove('show'), 1400);
 }
 
+
+/* ========== Moradores: casas, casamentos e filhos ========== */
+const NAMES_M = ['Bjorn', 'Ulf', 'Sven', 'Ivar', 'Torsten', 'Halvard', 'Olaf', 'Knut', 'Egil', 'Ragnvald', 'Arne', 'Gorm', 'Vidar', 'Sigurd', 'Hakon'];
+const NAMES_F = ['Helga', 'Sif', 'Thyra', 'Gudrun', 'Ylva', 'Ragna', 'Solveig', 'Inga', 'Hilda', 'Revna', 'Tove', 'Asa', 'Liv', 'Embla', 'Frida'];
+const BIRTH_H = 8, GROW_H = 12, ARRIVE_H = 4;
+const wedCost = () => ({ food: 300 + 150 * S.pop.wed, wood: 150 + 60 * S.pop.wed });
+function stepPop(now) {
+  const P = S.pop, room = () => P.n + P.kids.length < popCap(); let msg = '';
+  // filhos crescem
+  const grown = P.kids.filter(t => now - t >= GROW_H * 3600e3); if (grown.length) { P.kids = P.kids.filter(t => now - t < GROW_H * 3600e3); P.n += grown.length; msg = grown.length > 1 ? `${grown.length} jovens cresceram e já podem trabalhar!` : 'Um jovem cresceu e já pode trabalhar!'; }
+  // nascimentos (cada casal, um filho a cada 8h, se houver lugar e o povo estiver contente)
+  if (P.wed && happiness() >= 50) { const gap = BIRTH_H * 3600e3 / P.wed; if (!P.nb) P.nb = now + gap; let k = 0; while (now >= P.nb && room() && k < 6) { P.kids.push(P.nb); P.nb += gap; k++; } if (now >= P.nb) P.nb = now + gap; if (k) msg = k > 1 ? `Nasceram ${k} bebês vikings!` : 'Nasceu um bebê viking na vila!'; } else P.nb = 0;
+  // colonos chegam quando o povo está feliz e há casas vazias
+  if (happiness() >= 65 && room()) { if (!P.arr) P.arr = now + ARRIVE_H * 3600e3; else if (now >= P.arr) { P.n++; P.arr = now + ARRIVE_H * 3600e3; msg = msg || 'Um colono chegou e foi morar na vila!'; } } else P.arr = 0;
+  if (msg) { toast(msg); Snd.chime(); save(); dirty = true; }
+}
+function popHTML(p) {
+  const P = S.pop, cap = popCap(), hap = happiness(), wc = wedCost(), canWed = singles() >= 2 && houses() >= 1;
+  const nextKid = P.kids.length ? Math.min(...P.kids) + GROW_H * 3600e3 - Date.now() : 0;
+  let h = `<div class="exp"><div class="exph"><b>Moradores da vila</b><small>${P.n + P.kids.length} de ${cap} lugares</small></div>
+    <div class="hbar gold"><i style="width:${Math.min(100, (P.n + P.kids.length) / cap * 100)}%"></i></div>
+    <div class="exprow"><span>Adultos</span><span>${P.n} · ${freeAdults()} livres agora</span></div>
+    <div class="exprow"><span>Casais</span><span>${P.wed}${P.wed ? ` · próximo bebê em ${room2() ? fmtT(Math.max(0, (P.nb || Date.now()) - Date.now()) / 1000) : 'falta casa'}` : ''}</span></div>
+    <div class="exprow"><span>Crianças</span><span>${P.kids.length}${P.kids.length ? ` · a próxima cresce em ${fmtT(Math.max(0, nextKid) / 1000)}` : ''}</span></div>
+    <div class="exprow"><span>Felicidade</span><span><b style="color:${hap >= 65 ? '#7dff9a' : hap >= 50 ? 'var(--gold-hi)' : '#ff8a7a'}">${hap}%</b> · produção ${hap >= 50 ? '+' : ''}${Math.round((hap - 50) / 5)}%</span></div>
+    <p class="sub" style="margin:4px 0">A felicidade sobe com despensa variada, Taverna, fechaduras nas casas e casais. Acima de 65% chegam colonos.${p && p.type ? '' : ''}</p>`;
+  if (p) { const L = S.b[p.id].lvl; h += `<div class="exprow"><span>Esta casa</span><span>${L ? `abriga ${houseCap(L)}${L < MAXLV ? ` <span class="up">→ ${houseCap(L + 1)}</span>` : ''}${locksIn() >= PLOTS.filter(q => q.type === 'casa' && S.b[q.id].lvl && q.id <= p.id).length ? ' · com fechadura 🔒' : ''}` : 'construa para abrigar 3'}</span></div>`; }
+  h += `<p class="sub" style="margin:8px 0 2px">Casamento viking</p><p class="desc" style="margin:0 0 4px;font-size:13px">Solteiros: ${singles()}. Um casal tem um filho a cada ${BIRTH_H}h se houver lugar nas casas; a criança vira trabalhadora em ${GROW_H}h.</p>
+    ${costHTML(wc)}<div class="actions"><button class="btn" data-a="wed" ${canWed && canAfford(wc) ? '' : 'disabled'}>Celebrar casamento</button></div>${!houses() ? '<p class="req">Construa uma Casa de Moradores primeiro</p>' : singles() < 2 ? '<p class="req">Faltam solteiros: espere os jovens crescerem ou colonos chegarem</p>' : ''}</div>`;
+  return h;
+}
+const room2 = () => S.pop.n + S.pop.kids.length < popCap();
+function celebrateWedding() {
+  const c = wedCost(); if (singles() < 2 || !houses() || !canAfford(c)) return; spend(c);
+  S.pop.wed++; S.pop.wedTot = (S.pop.wedTot || 0) + 1; if (!S.pop.nb) S.pop.nb = Date.now() + BIRTH_H * 3600e3 / S.pop.wed;
+  const a = NAMES_M[Math.floor(Math.random() * NAMES_M.length)], b = NAMES_F[Math.floor(Math.random() * NAMES_F.length)];
+  Snd.done(); say(`Viva ${a} e ${b}! Skål!`); save(); dirty = true;
+  const p = plotById('salao'); burst(p, '#ff9ab0', 26); burst(p, '#f3d27a', 20);
+  openSheet(`<h2>Casamento viking!</h2><div class="wed"><span>💍</span></div><p class="desc" style="text-align:center"><b style="color:var(--gold-hi);font-size:20px">${a} & ${b}</b><br>se casaram no Salão do Jarl. A vila inteira bebeu hidromel até o amanhecer!</p>
+    <p class="sub" style="text-align:center">Agora são ${S.pop.wed} casais na vila. O primeiro bebê deles chega em ~${BIRTH_H}h, se houver lugar nas casas.</p><div class="actions"><button class="btn" data-a="close">Skål!</button></div>`);
+}
+
+/* ========== Ferreiro: fabricação ========== */
+const FORGE = {
+  pregos:    { n: 'Pregos', d: 'Obras gastam 15% menos madeira (cada obra usa 4 pregos por nível)', cost: { iron: 30 }, qty: 10, t: 40, L: 1, ico: '<path d="M6 4h12v3H6z" fill="#9aa3a8" stroke="#3a4044" stroke-width="1.3"/><path d="M11 7h2v11l-1 3-1-3z" fill="#b9c0c5" stroke="#3a4044" stroke-width="1.2"/>' },
+  fechadura: { n: 'Fechaduras', d: 'Instaladas nas casas: cada uma deixa os moradores mais seguros e felizes (+3%)', cost: { iron: 50, wood: 20 }, qty: 1, t: 80, L: 1, ico: '<path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#9aa3a8" stroke-width="2.2"/><rect x="5" y="10" width="14" height="11" rx="2" fill="#d9a441" stroke="#6b4a12" stroke-width="1.4"/><circle cx="12" cy="15" r="1.6" fill="#2a1a08"/><path d="M12 15v3" stroke="#2a1a08" stroke-width="1.4"/>' },
+  armadilha: { n: 'Armadilhas', d: 'Cada caçada usa 1: +30% de carne e couro e metade do risco de lobos', cost: { iron: 40, wood: 40 }, qty: 2, t: 60, L: 2, ico: '<path d="M3 16h18" stroke="#6b4527" stroke-width="2"/><path d="M5 16l2-6 2 6 2-6 2 6 2-6 2 6 2-6" fill="none" stroke="#9aa3a8" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="18" r="2.4" fill="none" stroke="#9aa3a8" stroke-width="1.6"/>' },
+  escudo:    { n: 'Escudos', d: '+12% de vida para as tropas (1 escudo por tropa, vale proporcional)', cost: { iron: 80, wood: 60 }, qty: 1, t: 110, L: 3, ico: '<circle cx="12" cy="12" r="9" fill="#a8322b" stroke="#3a1a10" stroke-width="1.4"/><circle cx="12" cy="12" r="6" fill="none" stroke="#d9a441" stroke-width="1.4"/><circle cx="12" cy="12" r="2.2" fill="#b9c0c5" stroke="#3a4044"/>' },
+  espada:    { n: 'Espadas', d: '+12% de dano para as tropas (1 espada por tropa, vale proporcional)', cost: { iron: 110, wood: 20 }, qty: 1, t: 140, L: 3, ico: '<path d="M14 3l7 0 0 7-9 9-3-3z" fill="#cfd8df" stroke="#3a4044" stroke-width="1.3"/><path d="M5 14l5 5M3 19l2 2" stroke="#6b4527" stroke-width="2.4" stroke-linecap="round"/><path d="M4 13l7 7" stroke="#d9a441" stroke-width="2"/>' }
+};
+const forgeIco = k => `<svg viewBox="0 0 24 24">${FORGE[k].ico}</svg>`;
+const forgeTime = k => Math.round(FORGE[k].t * (1 - .05 * Math.max(0, S.b.ferreiro.lvl - 1)));
+const forgeCost = (k, b) => { const o = {}; for (const r in FORGE[k].cost) o[r] = FORGE[k].cost[r] * b; return o; };
+function startForge(k, b) {
+  const F = FORGE[k]; if (!F || S.forge || S.b.ferreiro.lvl < F.L) return; const c = forgeCost(k, b); if (!canAfford(c)) { toast('Faltam recursos'); Snd.no(); return; }
+  spend(c); const per = forgeTime(k); S.forge = { k, left: b, per, next: Date.now() + per * 1000, tot: b }; Snd.build(); save(); dirty = true; renderSheet();
+}
+function stepForge(now) {
+  const F = S.forge; if (!F) return; let made = 0;
+  while (F.left > 0 && now >= F.next) { S.items[F.k] = (S.items[F.k] || 0) + FORGE[F.k].qty; F.left--; made++; F.next += F.per * 1000; }
+  if (made) { S.stats.forged = (S.stats.forged || 0) + made; dcount('forja', made); if (F.left <= 0) { S.forge = null; toast(`Ferreiro: ${FORGE[F.k].n.toLowerCase()} prontos!`); Snd.chime(); } save(); dirty = true; if (sheetFor === 'ferreiro' && !sheet.hidden) renderSheet(); }
+}
+function forgeHTML() {
+  const L = S.b.ferreiro.lvl, F = S.forge; let h = `<div class="exp"><div class="exph"><b>Fabricação</b><small>uma peça por vez</small></div>`;
+  if (F) { const left = Math.max(0, F.next - Date.now()) + (F.left - 1) * F.per * 1000, c = Math.ceil(left / 60000);
+    h += `<div class="exprow"><span>${forgeIco(F.k)} ${FORGE[F.k].n}</span><span>faltam ${F.left} de ${F.tot} · ${fmtT(left / 1000)}</span></div><div class="hbar gold"><i style="width:${(1 - Math.max(0, F.next - Date.now()) / (F.per * 1000)) * 100}%"></i></div>
+      <div class="actions"><button class="btn rune sm" data-a="fspeed">${c ? `Acelerar · ${c} runa${c > 1 ? 's' : ''}` : 'Concluir'}</button></div>`; }
+  h += `<div class="forge">${Object.entries(FORGE).map(([k, f]) => { const lock = L < f.L, c1 = forgeCost(k, 1), c5 = forgeCost(k, 5);
+    return `<div class="fitem${lock ? ' locked' : ''}"><div class="fi">${forgeIco(k)}<div><b>${f.n} <small>estoque ${S.items[k] || 0}</small></b><small>${f.d}</small><span>${Object.entries(c1).map(([r, v]) => `${icoSVG(r)}${v}`).join(' ')} → ${f.qty > 1 ? f.qty + ' ' : ''}${f.qty > 1 ? f.n.toLowerCase() : '1'} · ${fmtT(forgeTime(k))}</span></div></div>
+      ${lock ? `<span class="req">Ferreiro nível ${f.L}</span>` : `<div class="fb"><button class="btn sm" data-a="forge" data-k="${k}" data-v="1" ${F || !canAfford(c1) ? 'disabled' : ''}>×1</button><button class="btn sm ghost" data-a="forge" data-k="${k}" data-v="5" ${F || !canAfford(c5) ? 'disabled' : ''}>×5</button></div>`}</div>`; }).join('')}</div>
+    <p class="sub">Pregos: ${S.items.pregos || 0} (obras gastam menos madeira) · Fechaduras instaladas: ${locksIn()} de ${houses()} casas · Tropas equipadas: ${Math.min(armyCount(), S.items.espada || 0)} espadas, ${Math.min(armyCount(), S.items.escudo || 0)} escudos</p></div>`;
+  return h;
+}
+sheet.addEventListener('click', e => {
+  const a = e.target.closest('[data-a]'); if (!a) return;
+  if (a.dataset.a === 'wed') celebrateWedding();
+  if (a.dataset.a === 'forge') startForge(a.dataset.k, +a.dataset.v);
+  if (a.dataset.a === 'fspeed') { const F = S.forge; if (!F) return; const left = Math.max(0, F.next - Date.now()) + (F.left - 1) * F.per * 1000, c = Math.ceil(left / 60000); if (S.runes < c) { toast('Runas insuficientes'); Snd.no(); return; } S.runes -= c; F.next = Date.now(); F.per = 0; stepForge(Date.now()); renderSheet(); }
+});
+
 /* ========== Torre de Valhalla (andares infinitos) ========== */
 const TOWER_UNLOCK = 8; // depois da fase 1-8 da Saga
 const towerOpen = () => S.camp.next >= TOWER_UNLOCK;
@@ -3405,7 +3514,7 @@ $('#btnSpd').addEventListener('click', () => { S.bspd = (S.bspd || 1) === 1 ? 2 
 
 /* ========== Laço do jogo ========== */
 function tick() {
-  finished = []; trainedNow = 0; advance(Date.now());
+  finished = []; trainedNow = 0; advance(Date.now()); stepPop(Date.now()); stepForge(Date.now());
   refreshHerd(); refreshPiles(); stepTut(); renderSide(); $('#mission').classList.toggle('dot', chestReady() || dqClaimable());
   ['lenha', 'mina', 'caca'].forEach(k => { const e = S.exp[k]; if (e && Date.now() >= e.end && !e.told) { e.told = 1; Snd.done(); toast(`${EXP[k].name} terminaram! Toque no ✓ para ver`); save(); } });
   if (trainedNow) { dirty = true; refreshGuards(); if (sheetFor === 'quartel' && !sheet.hidden) renderSheet(); }
@@ -3633,7 +3742,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 26;
+const GAME_VERSION = 27;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -3656,4 +3765,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && !B && !CINE) { reloaded = true; save(); location.reload(); } });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); setInterval(() => r.update(), 5 * 60e3); }).catch(() => {}));
 }
-window.__vs = { openChest, openTavern, openHeroes, openHero, startClanBoss, openClan, exportVila, packVila, unpackVila, startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { celebrateWedding, startForge, stepPop, popCap, happiness, freeAdults, startExp, openChest, openTavern, openHeroes, openHero, startClanBoss, openClan, exportVila, packVila, unpackVila, startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
