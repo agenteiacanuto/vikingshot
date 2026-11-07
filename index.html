@@ -184,7 +184,8 @@ body.cine .hud,body.cine #tags,body.cine .bhud{display:none!important}
 .ok{color:var(--ok);font-weight:800;margin:4px 0}
 .crops{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;margin-top:6px}
 .crop{display:grid;gap:2px;text-align:left;border:1px solid #5a4632;border-radius:12px;background:rgba(0,0,0,.28);padding:8px 10px;color:var(--bone)}
-.crop b{font:400 18px var(--display);color:var(--gold-hi)}.crop span{font-size:13px;font-weight:700}.crop svg{width:16px;height:16px;vertical-align:-3px}
+.crop b{font:400 18px var(--display);color:var(--gold-hi);display:flex;align-items:center;gap:6px}.crop b .cico{width:24px;height:24px;flex:none}.fld-row .cico{width:18px;height:18px;vertical-align:-4px;margin-right:4px}
+.cost.crc{gap:8px}.cost.crc .cico{width:34px;height:34px}.cost.crc span{display:grid;line-height:1.1}.cost.crc small{font-size:11px;opacity:.8;font-weight:700}.crop span{font-size:13px;font-weight:700}.crop svg{width:16px;height:16px;vertical-align:-3px}
 .crop small{color:var(--bad);font-weight:800}.crop.locked{opacity:.55}
 .fld-row{width:100%;border:0;color:var(--bone);text-align:left;font:700 15px var(--body)}
 .relics{display:grid;gap:6px}
@@ -424,8 +425,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 if (location.protocol === 'file:') document.getElementById('loadMsg').innerHTML = 'Este jogo 3D precisa ser aberto por um endereço <b>http://</b> (GitHub Pages ou servidor local).<br>Abrir o arquivo com dois cliques não funciona.';
 else setTimeout(() => { const m = document.getElementById('loadMsg'); if (m && document.getElementById('loading')) m.textContent = 'Ainda carregando… se não avançar, recarregue a página.'; }, 25000);
 </script>
-<script src="config.js?v=24"></script>
+<script src="config.js?v=25"></script>
 <script src="lib/supabase.js"></script>
-<script type="module" src="app.js?v=24"></script>
+<script type="module" src="app.js?v=25"></script>
 </body>
 </html>
