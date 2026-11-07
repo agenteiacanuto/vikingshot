@@ -37,3 +37,20 @@ create policy "atualiza o proprio save" on public.saves for update using (auth.u
 
 create index if not exists profiles_power on public.profiles (power desc);
 create index if not exists profiles_wave on public.profiles (best_wave desc, power desc);
+
+-- Ranking dos eventos semanais (rode uma vez)
+create table if not exists public.event_scores (
+  week int not null,
+  user_id uuid not null references auth.users on delete cascade,
+  jarl text not null default 'Jarl' check (char_length(jarl) between 1 and 18),
+  pts int not null default 0 check (pts between 0 and 1000000),
+  primary key (week, user_id)
+);
+alter table public.event_scores enable row level security;
+drop policy if exists "ranking do evento publico" on public.event_scores;
+create policy "ranking do evento publico" on public.event_scores for select using (true);
+drop policy if exists "cria os proprios pontos" on public.event_scores;
+create policy "cria os proprios pontos" on public.event_scores for insert with check (auth.uid() = user_id);
+drop policy if exists "atualiza os proprios pontos" on public.event_scores;
+create policy "atualiza os proprios pontos" on public.event_scores for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create index if not exists event_scores_week on public.event_scores (week, pts desc);
