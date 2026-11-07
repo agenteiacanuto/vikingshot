@@ -358,6 +358,10 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 .btn.dotb{position:relative}.btn.dotb::after{content:'';position:absolute;right:-3px;top:-3px;width:10px;height:10px;border-radius:50%;background:#e0523f;border:2px solid #2b1f16}
 @media (max-height:720px){.side{gap:4px}.sbtn{width:50px;padding:3px 2px 2px;font-size:10px}.sbtn svg{width:20px;height:20px}.sbtn small{font-size:8px}}
 .rv.new{box-shadow:0 0 18px var(--rc)}.rv small+small{opacity:.8;font-size:11px}
+.forge{display:grid;gap:6px;margin:6px 0}.fitem{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:8px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid #5a4632}
+.fitem.locked{opacity:.55}.fi{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:start}.fi>svg{width:34px;height:34px}.fi b{display:block;font:400 17px var(--display);color:var(--gold-hi)}.fi b small{font:800 11px var(--body);color:var(--bone);opacity:.8;margin-left:4px}
+.fi small{display:block;font-size:12px;opacity:.85}.fi span{display:flex;align-items:center;gap:3px;flex-wrap:wrap;font-size:12px;font-weight:800;margin-top:2px}.fi span svg{width:14px;height:14px}.fb{display:grid;gap:4px}
+.wed{text-align:center;font-size:64px;animation:wedb 1.4s ease-in-out infinite}@keyframes wedb{50%{transform:scale(1.12)}}
 .chat{height:min(46vh,340px);overflow-y:auto;display:grid;align-content:start;gap:6px;padding:8px;margin:8px 0;border-radius:12px;background:#120d09;border:1px solid #3d3024}
 .cmsg{display:grid;grid-template-columns:auto 1fr;gap:0 8px;padding:6px 10px;border-radius:10px;background:#2a1e14;max-width:92%}.cmsg.me{justify-self:end;background:#3a2c14}
 .cmsg b{font-size:13px;color:var(--gold-hi)}.cmsg span{grid-column:1/-1;font-size:14px;word-break:break-word}.cmsg small{grid-row:1;grid-column:2;justify-self:end;font-size:11px;opacity:.6}
@@ -425,8 +429,8 @@ body.battle .hud,body.battle #tags .tag{display:none!important}
 if (location.protocol === 'file:') document.getElementById('loadMsg').innerHTML = 'Este jogo 3D precisa ser aberto por um endereço <b>http://</b> (GitHub Pages ou servidor local).<br>Abrir o arquivo com dois cliques não funciona.';
 else setTimeout(() => { const m = document.getElementById('loadMsg'); if (m && document.getElementById('loading')) m.textContent = 'Ainda carregando… se não avançar, recarregue a página.'; }, 25000);
 </script>
-<script src="config.js?v=26"></script>
+<script src="config.js?v=27"></script>
 <script src="lib/supabase.js"></script>
-<script type="module" src="app.js?v=26"></script>
+<script type="module" src="app.js?v=27"></script>
 </body>
 </html>
