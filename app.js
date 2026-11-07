@@ -99,10 +99,7 @@ const costFor = (type, L) => {
   const d = DEF[type], f = Math.pow(1.55, L - 1), out = {};
   for (const k in d.cost) out[k] = Math.round(d.cost[k] * f / 5) * 5;
   if (L >= 4 && type !== 'mina') out.iron = Math.round((d.cost.wood || d.cost.food || 60) * .35 * Math.pow(1.5, L - 4) / 5) * 5;
-  const m = type === 'salao' ? 2 : 1; // níveis altos pedem ouro e gemas
-  if (L === 8) out.ouro = 3 * m;
-  if (L === 9) { out.ouro = 5 * m; out.rubi = 1 * m; }
-  if (L === 10) { out.rubi = 2 * m; out.diamante = 1 * m; }
+  if (L >= 8) { const big = Math.max(...Object.values(out)); out.stone = Math.round(((out.stone || 0) + big * .25 * (L - 7)) / 5) * 5; } // níveis altos: pedra lavrada (as gemas ficam para as relíquias)
   return out;
 };
 const timeFor = (type, L) => Math.round(DEF[type].time * Math.pow(1.6, L - 1) * (1 - relic('build')) * (1 - .04 * RS('build')));
@@ -3636,7 +3633,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 25;
+const GAME_VERSION = 26;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
