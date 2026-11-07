@@ -349,6 +349,8 @@ function rollGems(n, s) {
   if (!S.stats.gemFound && !Object.keys(out).length) out.ouro = 1; // a primeira expedição sempre acha ouro
   return out;
 }
+const CROP_ICO = {alface: '<path d="M12 21c-6 0-9-4-8-9 2 1 3 1 4-1-1-3 1-6 4-7 3 1 5 4 4 7 1 2 2 2 4 1 1 5-2 9-8 9z" fill="#8fd05a" stroke="#2f5a16" stroke-width="1.3"/><path d="M12 21c-3-1-4-4-3-7 1 1 2 1 3 0 1 1 2 1 3 0 1 3 0 6-3 7z" fill="#c6ec8a" stroke="#2f5a16" stroke-width="1"/>', cenoura: '<path d="M6 18L17 6q3 1 2 4L8 20q-3 0-2-2z" fill="#ef8a2b" stroke="#7a3a0a" stroke-width="1.4"/><path d="M10 15l2 1M13 12l2 1" stroke="#7a3a0a" stroke-width="1"/><path d="M17 6l2-3M18 7l3-1M16 5l0-3" stroke="#4f9a2e" stroke-width="1.8" stroke-linecap="round"/>', trigo: '<path d="M12 22V6" stroke="#9a6a1a" stroke-width="1.6"/><g fill="#f0c45a" stroke="#8a5a12" stroke-width="1"><ellipse cx="9.5" cy="9" rx="2" ry="3" transform="rotate(-30 9.5 9)"/><ellipse cx="14.5" cy="9" rx="2" ry="3" transform="rotate(30 14.5 9)"/><ellipse cx="9.5" cy="14" rx="2" ry="3" transform="rotate(-30 9.5 14)"/><ellipse cx="14.5" cy="14" rx="2" ry="3" transform="rotate(30 14.5 14)"/><ellipse cx="12" cy="5" rx="1.8" ry="3"/></g>', tomate: '<circle cx="12" cy="14" r="7.5" fill="#e0352b" stroke="#6b1210" stroke-width="1.4"/><path d="M8 13q1-3 3-3" stroke="#ff9a8a" stroke-width="1.4" fill="none" stroke-linecap="round"/><path d="M12 7l-3-2 3 1 1-3 1 3 3-1-3 2 2 2-3-1-1 2-1-2-3 1z" fill="#3f8a24" stroke="#1f4a10" stroke-width=".8"/>', amora: '<path d="M12 6q-1-3 2-4" stroke="#3f7a24" stroke-width="1.6" fill="none"/><path d="M12 6q3-3 6-1-3 2-6 1z" fill="#5aa032"/><g fill="#5a2a8a" stroke="#2a103f" stroke-width="1"><circle cx="9" cy="12" r="3"/><circle cx="15" cy="12" r="3"/><circle cx="12" cy="10" r="3"/><circle cx="10" cy="17" r="3"/><circle cx="15" cy="17" r="3"/><circle cx="12" cy="14" r="3"/></g><circle cx="10.5" cy="9" r=".9" fill="#c9a0ff"/>', beterraba: '<path d="M12 21q-1-2 0-4" stroke="#6b1a3a" stroke-width="1.4"/><circle cx="12" cy="13" r="6" fill="#9a1a4a" stroke="#4a0a20" stroke-width="1.4"/><path d="M9 11q1-2 3-2" stroke="#e86a9a" stroke-width="1.2" fill="none"/><path d="M12 7q-4-4-5-6 4 1 5 6zM12 7q4-4 5-6-4 1-5 6z" fill="#4f9a2e" stroke="#2a5a16" stroke-width=".9"/>', milho: '<path d="M12 3c3 0 4 4 4 9s-1 9-4 9-4-4-4-9 1-9 4-9z" fill="#f5cc3a" stroke="#8a6a0a" stroke-width="1.3"/><path d="M10 7h4M9.5 10h5M9.5 13h5M10 16h4M12 4v16" stroke="#c9a020" stroke-width=".8"/><path d="M8 12c-3 3-3 7 1 10 0-4 1-7 3-9zM16 12c3 3 3 7-1 10 0-4-1-7-3-9z" fill="#6fae3a" stroke="#2f5a16" stroke-width="1"/>', abobora: '<ellipse cx="12" cy="14" rx="9" ry="7" fill="#f08a1a" stroke="#7a3a0a" stroke-width="1.4"/><path d="M12 7c-2 2-2 12 0 14M12 7c2 2 2 12 0 14M7 9c-2 3-2 8 0 11M17 9c2 3 2 8 0 11" stroke="#b8560a" stroke-width="1.1" fill="none"/><path d="M12 7q0-3 2-4" stroke="#4f7a24" stroke-width="2" stroke-linecap="round"/>', maca: '<path d="M12 8c-3-2-8-1-8 5s4 9 6 8c1 0 1-1 2-1s1 1 2 1c2 1 6-2 6-8s-5-7-8-5z" fill="#d8302a" stroke="#6b1210" stroke-width="1.4"/><path d="M7 12q0-2 2-3" stroke="#ff9a8a" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M12 8q0-3 1-5" stroke="#5a3a1a" stroke-width="1.5"/><path d="M13 5q3-2 5 0-3 2-5 0z" fill="#5aa032"/>', melancia: '<path d="M3 10a9 9 0 0 0 18 0z" fill="#3f8a2e" stroke="#1f4a10" stroke-width="1.4"/><path d="M5 10a7 7 0 0 0 14 0z" fill="#f0f0d0"/><path d="M6 10a6 6 0 0 0 12 0z" fill="#e8384a"/><g fill="#2a1a10"><ellipse cx="9" cy="12" rx=".7" ry="1"/><ellipse cx="12" cy="14" rx=".7" ry="1"/><ellipse cx="15" cy="12" rx=".7" ry="1"/></g>', laranja: '<circle cx="12" cy="14" r="7.5" fill="#f5961a" stroke="#7a420a" stroke-width="1.4"/><g fill="#d07010"><circle cx="9" cy="12" r=".6"/><circle cx="14" cy="16" r=".6"/><circle cx="15" cy="11" r=".6"/><circle cx="10" cy="17" r=".6"/></g><path d="M8 12q1-3 3-3" stroke="#ffd08a" stroke-width="1.3" fill="none" stroke-linecap="round"/><path d="M12 7q2-4 6-3-2 3-6 3z" fill="#4f9a2e" stroke="#2a5a16" stroke-width=".9"/>'};
+const cropIco = k => `<svg class="cico" viewBox="0 0 24 24">${CROP_ICO[k] || ''}</svg>`;
 const CROPS = {
   alface:    { name: 'Alface', m: 'Lettuce', cat: 'verduras', s: 90, q: 6, L: 1, h: .3 },
   cenoura:   { name: 'Cenoura', m: 'Carrot', cat: 'legumes', s: 180, q: 8, L: 1, h: .3 },
@@ -1745,7 +1747,7 @@ function cineHarvest(i, f, rew, n = 1, names = []) {
       }
     },
     finish() { g.userData.lock = false; g.userData.sig = null; },
-    card: rewardCard(n > 1 ? `Colheita de ${n} canteiros!` : 'Colheita feita!', n > 1 ? `${names.join(', ')} · tudo guardado na vila e na despensa` : `${C.name} foi para a ${C.cat === 'food' ? 'comida da vila' : 'despensa'}`, rew).replace('data-a="close">Coletar</button>', `data-a="close">Coletar</button>${S.b.horta.lvl && fieldsOpen() > 1 ? '<button class="btn ghost" data-a="horta-open">Replantar</button>' : ''}`) });
+    card: `<h2>${n > 1 ? `Colheita de ${n} canteiros!` : 'Colheita feita!'}</h2><p class="sub">Tudo guardado na vila e na despensa</p><div class="costs big">${Object.entries(rew).map(([k, v]) => `<div class="cost crc">${cropIco(k)}<span><b>+${fmt(v)}</b><small>${CROPS[k].name} · ${RES_NAME[CROPS[k].cat]}</small></span></div>`).join('')}</div><div class="actions"><button class="btn" data-a="close">Coletar</button>${S.b.horta.lvl && fieldsOpen() > 1 ? '<button class="btn ghost" data-a="horta-open">Replantar</button>' : ''}</div>` });
 }
 /* curral */
 function cineCurral(rew) {
@@ -2747,13 +2749,13 @@ function openField(i) {
     if (left <= 0) { harvest(i); return; }
     const c = Math.ceil(left / 60000);
     openSheet(`<h2>${C.name}</h2><p class="sub">Canteiro ${i + 1} · crescendo</p><div class="hbar green"><i style="width:${(1 - left / (f.end - f.start)) * 100}%"></i></div>
-      <div class="stat"><span>Pronto em</span><span>${fmtT(left / 1000)}</span></div><div class="stat"><span>Colheita</span><span>${icoSVG(C.cat)} ${cropYield(f.c)}</span></div>
+      <div class="stat"><span>Pronto em</span><span>${fmtT(left / 1000)}</span></div><div class="stat"><span>Colheita</span><span>${cropIco(f.c)} ${cropYield(f.c)} ${RES_NAME[C.cat].toLowerCase()}</span></div>
       <div class="actions"><button class="btn rune" data-a="crop-speed" data-v="${i}">Acelerar · ${c} runa${c > 1 ? 's' : ''}</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
     return;
   }
   openSheet(`<h2>Plantar</h2><p class="sub">Canteiro ${i + 1} · escolha a semente</p><div class="crops">${Object.entries(CROPS).map(([k, C]) => {
     const lock = L < C.L;
-    return `<button class="crop${lock ? ' locked' : ''}" data-a="plant" data-k="${k}" data-v="${i}" ${lock ? 'disabled' : ''}><b>${C.name}</b><span>${icoSVG(C.cat)} ${cropYield(k)} · ${fmtT(C.s)}</span>${lock ? `<small>Horta nível ${C.L}</small>` : ''}</button>`;
+    return `<button class="crop${lock ? ' locked' : ''}" data-a="plant" data-k="${k}" data-v="${i}" ${lock ? 'disabled' : ''}><b>${cropIco(k)}${C.name}</b><span>${cropYield(k)} ${RES_NAME[C.cat].toLowerCase()} · ${fmtT(C.s)}</span>${lock ? `<small>Horta nível ${C.L}</small>` : ''}</button>`;
   }).join('')}</div><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`);
 }
 function plant(i, k, all) {
@@ -2765,21 +2767,21 @@ const ripeFields = () => S.fields.map((f, j) => j).filter(j => j < fieldsOpen() 
 function harvest(i) { // colhe todos os canteiros prontos de uma vez
   if (CINE || B) return; if (!restReady) { toast('Carregando… só um instante'); loadRest().then(() => harvest(i)); return; } if (!fieldG.length) refreshFields(Date.now()); if (i != null) i = +i; if (i == null || !S.fields[i] || Date.now() < S.fields[i].end) i = ripeFields()[0];
   const f = S.fields[i]; if (!f || Date.now() < f.end) return;
-  const all = ripeFields(), rew = {}, names = [];
-  all.forEach(j => { const F = S.fields[j], C = CROPS[F.c], q = cropYield(F.c); rew[C.cat] = (rew[C.cat] || 0) + q; gain(C.cat, q); if (!names.includes(C.name)) names.push(C.name); S.fields[j] = null;
+  const all = ripeFields(), rew = {}, names = [], byCrop = {};
+  all.forEach(j => { const F = S.fields[j], C = CROPS[F.c], q = cropYield(F.c); rew[C.cat] = (rew[C.cat] || 0) + q; byCrop[F.c] = (byCrop[F.c] || 0) + q; gain(C.cat, q); if (!names.includes(C.name)) names.push(C.name); S.fields[j] = null;
     if (j !== i) { const [x, z] = hexPos(...FIELDS[j]); burstAt(x, .4, z, '#7fc04f', 12, .04); } });
   dcount('colher', all.length); S.stats.harvest = (S.stats.harvest || 0) + all.length; save(); dirty = true; closeSheet();
-  cineHarvest(i, f, rew, all.length, names);
+  cineHarvest(i, f, byCrop, all.length, names);
 }
 function hortaHTML() {
   const open = fieldsOpen(), now = Date.now(), L = S.b.horta.lvl;
   if (!L) return '';
   const empty = S.fields.filter((f, j) => j < open && !f).length;
   let h = `<div class="stat"><span>Canteiros</span><span>${open} de 5</span></div><div class="mlist">`;
-  for (let j = 0; j < open; j++) { const f = S.fields[j]; h += `<button class="mitem fld-row" data-a="field" data-v="${j}">${j + 1}. ${f ? `${CROPS[f.c].name} · ${now >= f.end ? '<b class="ok">pronto para colher</b>' : fmtT((f.end - now) / 1000)}` : 'vazio · toque para plantar'}</button>`; }
+  for (let j = 0; j < open; j++) { const f = S.fields[j]; h += `<button class="mitem fld-row" data-a="field" data-v="${j}">${j + 1}. ${f ? `${cropIco(f.c)}${CROPS[f.c].name} · ${now >= f.end ? '<b class="ok">pronto para colher</b>' : fmtT((f.end - now) / 1000)}` : 'vazio · toque para plantar'}</button>`; }
   h += '</div>';
   { const r = ripeFields().length; if (r) h += `<div class="actions"><button class="btn" data-a="harvest-all">Colher tudo (${r} canteiro${r > 1 ? 's' : ''})</button></div>`; }
-  if (empty > 1) h += `<p class="sub" style="margin-top:10px">Plantar em todos os ${empty} canteiros vazios:</p><div class="crops">${Object.entries(CROPS).filter(([, C]) => C.L <= L).map(([k, C]) => `<button class="crop" data-a="plant-all" data-k="${k}"><b>${C.name}</b><span>${icoSVG(C.cat)} ${cropYield(k)} · ${fmtT(C.s)}</span></button>`).join('')}</div>`;
+  if (empty > 1) h += `<p class="sub" style="margin-top:10px">Plantar em todos os ${empty} canteiros vazios:</p><div class="crops">${Object.entries(CROPS).filter(([, C]) => C.L <= L).map(([k, C]) => `<button class="crop" data-a="plant-all" data-k="${k}"><b>${cropIco(k)}${C.name}</b><span>${cropYield(k)} ${RES_NAME[C.cat].toLowerCase()} · ${fmtT(C.s)}</span></button>`).join('')}</div>`;
   return h;
 }
 /* curral */
@@ -2859,7 +2861,7 @@ function updateFieldTags() {
     sign.hidden = !!f; if (!f) { sign.textContent = 'Plantar'; sign.classList.add('free'); }
     const ripe = f && now >= f.end;
     prog.hidden = !f || ripe; if (f && !ripe) { prog.querySelector('i').style.width = Math.min(100, (now - f.start) / (f.end - f.start) * 100) + '%'; prog.querySelector('b').textContent = fmtT((f.end - now) / 1000); }
-    bub.hidden = !ripe; if (ripe && bub.dataset.k !== f.c) { bub.dataset.k = f.c; bub.innerHTML = icoSVG(CROPS[f.c].cat); }
+    bub.hidden = !ripe; if (ripe && bub.dataset.k !== f.c) { bub.dataset.k = f.c; bub.innerHTML = cropIco(f.c); }
   });
 }
 function pickField(sx, sy) {
@@ -3634,7 +3636,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 24;
+const GAME_VERSION = 25;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
