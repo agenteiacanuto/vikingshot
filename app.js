@@ -3482,7 +3482,7 @@ function say(txt) {
 /* ========== Baú diário, missões do dia e fim de semana ========== */
 const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const isWeekend = () => { const d = new Date().getDay(); return d === 0 || d === 6; };
-const CHEST = [{ runes: 5, food: 300 }, { runes: 8, wood: 400 }, { runes: 10, stone: 400 }, { runes: 12, iron: 200 }, { runes: 15, food: 600, wood: 600 }, { runes: 20, ouro: 1 }, { runes: 30, ouro: 3, rubi: 1 }];
+const CHEST = [{ mead: 1, runes: 5, food: 300 }, { mead: 1, runes: 8, wood: 400 }, { mead: 1, runes: 10, stone: 400 }, { mead: 1, runes: 12, iron: 200 }, { mead: 1, runes: 15, food: 600 }, { mead: 1, runes: 20, ouro: 1 }, { mead: 3, runes: 30, ouro: 3, rubi: 1 }];
 function chestReady() { return S.daily.last !== today(); }
 const chestTier = d => d >= 7 ? 'lend' : d >= 4 ? 'ferro' : 'madeira';
 function chestSVG(t, mini) {
@@ -3568,12 +3568,12 @@ function dailyHTML() {
   const q = dailyQuests();
   return `<p class="sub" style="margin-top:4px">Missões do dia${isWeekend() ? ' · <b class="ok">fim de semana: expedições +50%</b>' : ''}</p><div class="mlist">${q.list.map(k => { const d = dqDef(k), c = Math.min(d.n, q.cnt[k] || 0), got = q.got.includes(k);
     return `<div class="mitem dq${got ? ' done' : ''}"><span>${d.t} <small>${c}/${d.n}</small></span>${got ? '✓' : dqDone(k) ? `<button class="btn sm" data-a="dq" data-k="${k}">Pegar</button>` : `<small>${Object.entries(d.r).map(([rk, v]) => `${icoSVG(rk)}${fmt(v)}`).join(' ')}</small>`}</div>`; }).join('')}
-    <div class="mitem dq${q.bonus ? ' done' : ''}"><span>Complete as 3 <small>bônus</small></span>${q.bonus ? '✓' : q.list.every(k => q.got.includes(k)) ? '<button class="btn sm" data-a="dq" data-k="bonus">Pegar</button>' : `<small>${icoSVG('runes')}15</small>`}</div></div>
+    <div class="mitem dq${q.bonus ? ' done' : ''}"><span>Complete as 3 <small>bônus</small></span>${q.bonus ? '✓' : q.list.every(k => q.got.includes(k)) ? '<button class="btn sm" data-a="dq" data-k="bonus">Pegar</button>' : `<small>${icoSVG('runes')}15 ${icoSVG('mead')}1</small>`}</div></div>
     <div class="mitem chestline" data-a="chestopen">${chestReady() ? '<b class="ok">Baú diário pronto para abrir!</b>' : `Baú diário · volta amanhã (dia ${S.daily.next || 1})`}</div>`;
 }
 function claimDq(k) {
   const q = dailyQuests();
-  if (k === 'bonus') { if (q.bonus || !q.list.every(x => q.got.includes(x))) return; q.bonus = true; gain('runes', 15); }
+  if (k === 'bonus') { if (q.bonus || !q.list.every(x => q.got.includes(x))) return; q.bonus = true; gain('runes', 15); gain('mead', 1); }
   else { if (!dqDone(k) || q.got.includes(k)) return; q.got.push(k); const r = dqDef(k).r; for (const x in r) gain(x, r[x]); }
   passXP(40); Snd.done(); toast('Recompensa recebida!'); save(); dirty = true; openMissions();
 }
@@ -3627,7 +3627,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 22;
+const GAME_VERSION = 23;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
