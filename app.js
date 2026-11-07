@@ -258,6 +258,7 @@ if (!S.patrol) S.patrol = Date.now();
 if (!S.tower) S.tower = { best: 0 };
 if (!S.tot) S.tot = {};
 if (!S.ach) S.ach = {};
+if (!S.cb) S.cb = { w: 0, got: [], d: '', n: 0, best: 0 };
 if (!S.gfx) S.gfx = 'auto';
 if (!S.daily) S.daily = {};
 if (S.tut === undefined) S.tut = (S.mission > 3 || (S.b && S.b.salao && S.b.salao.lvl > 2)) ? 99 : 0;
@@ -500,7 +501,7 @@ function passReward(i) { // i = 0..29
   if ((i + 1) % 10 === 0) return { ['h:' + ['sigrid', 'ragnar', 'freydis'][((i + 1) / 10 - 1 + seasonNo()) % 3]]: 12, gear: 1, runes: 30 };
   return R[i % R.length];
 }
-const PASS_XP_OF = { coletar: 1, obras: 8, exp_lenha: 6, exp_mina: 6, exp_caca: 6, colher: 5, curral: 4, ondas: 25, treinar: 1, saga: 15, pesquisa: 10, recrutar: 2, arena: 15, torre: 15 };
+const PASS_XP_OF = { coletar: 1, obras: 8, exp_lenha: 6, exp_mina: 6, exp_caca: 6, colher: 5, curral: 4, ondas: 25, treinar: 1, saga: 15, pesquisa: 10, recrutar: 2, arena: 15, torre: 15, clan: 15 };
 function passXP(n) { const p = passState(), before = Math.floor(p.xp / PASS_XP); p.xp = Math.min(PASS_LV * PASS_XP, p.xp + n); if (Math.floor(p.xp / PASS_XP) > before && typeof toast === 'function') toast(`Passe do Jarl: nível ${Math.floor(p.xp / PASS_XP)}!`); }
 
 /* ========== Arena ========== */
@@ -1226,6 +1227,7 @@ function stepBattle(dt) {
   if (B.cut) stepCut(dt); else followHero(dt);
   dt *= (B.slow || 1) * (B.cut ? 1 : (B.spd || 1));
   B.t += dt;
+  if (B.mode === 'clanboss') stepClanBoss();
   stepDmg(dt);
   if (B.later && B.later.length) for (let i = B.later.length - 1; i >= 0; i--) { const l = B.later[i]; if ((l.t -= dt) <= 0) { B.later.splice(i, 1); if (!B.over) l.fn(); } }
   // drakkar inimigo chega à praia
@@ -1263,7 +1265,7 @@ function stepBattle(dt) {
   }
   B.skillCd = Math.max(0, B.skillCd - dt);
   // barras
-  B.units.forEach(u => { if (!u.on || u.dead) { u.bar.bg.visible = u.bar.fg.visible = false; return; } const p = u.o.position; placeBar(u.bar, p.x, u.barY, p.z, u.hp / u.max, u.kind === 'hero' || u.kind === 'boss' || u.hp < u.max); });
+  B.units.forEach(u => { if (!u.on || u.dead || u === B.boss) { u.bar.bg.visible = u.bar.fg.visible = false; return; } const p = u.o.position; placeBar(u.bar, p.x, u.barY, p.z, u.hp / u.max, u.kind === 'hero' || u.kind === 'boss' || u.hp < u.max); });
   B.blds.forEach(t => placeBar(t.bar, t.x, (PLOT_H[t.p.type] || 1.5) + .5, t.z, Math.max(0, t.hp) / t.max, t.hp > 0 && t.hp < t.max));
   if (B.mark) { B.mark.material.opacity -= dt * 1.2; B.mark.scale.multiplyScalar(1 + dt * .6); if (B.mark.material.opacity <= 0) { scene.remove(B.mark); B.mark = null; } }
   // fim?
@@ -1299,6 +1301,7 @@ function moveHero(sx, sy) {
 function endBattle(win) {
   if (!B || B.over) return; B.over = true;
   if (B.mode === 'arena') { endArena(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
+  if (B.mode === 'clanboss') { endClanBoss(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
   if (B.mode === 'tower') { endTower(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
   if (B.mode === 'camp') { endCamp(win); B.units.forEach(u => { if (u.side === 'ally' && u.head) u.hr0 = u.head.rotation.x; }); return; }
   const w = B.wave, surv = { war: 0, arc: 0, hus: 0 }, lost = { war: 0, arc: 0, hus: 0 };
@@ -2511,6 +2514,8 @@ const Cloud = {
     const a = await this.sb.from('saves').upsert({ user_id: this.user.id, data: S, updated_at: now });
     if (this.arenaOk !== false && S.team.length) { const sn = mySnapshot(); this.sb.from('arena').upsert({ user_id: this.user.id, jarl: S.jarl || 'Jarl', rating: arenaState().rating, power: snapPower(sn), snap: sn, updated_at: new Date().toISOString() }).then(r => { if (r.error) this.arenaOk = false; }); }
     if (this.evOk !== false) { const ev = evState(); if (ev.pts > 0) this.sb.from('event_scores').upsert({ week: ev.w, user_id: this.user.id, jarl: S.jarl || 'Jarl', pts: ev.pts }).then(r => { if (r.error) this.evOk = false; }); }
+    if (this.towOk !== false && S.tower && S.tower.best > 0) this.sb.from('tower').upsert({ user_id: this.user.id, jarl: S.jarl || 'Jarl', best: S.tower.best, updated_at: now }).then(r => { if (r.error) this.towOk = false; });
+    if (S.clan && this.clanOk !== false) this.sb.from('clan_members').update({ jarl: S.jarl || 'Jarl', power: Math.min(200000, power()) }).eq('user_id', this.user.id).then(() => {});
     const b = await this.sb.from('profiles').upsert({ id: this.user.id, jarl: S.jarl || 'Jarl', vila: S.vila || 'Vila do Jarl', power: Math.min(200000, power()), best_wave: Math.min(30, S.wave - 1), updated_at: now });
     this.busy = false; this.lastPush = Date.now();
     if (a.error || b.error) { cloudDirty = true; this.setStatus('err'); console.warn(a.error || b.error); } else this.setStatus('ok');
@@ -2553,6 +2558,9 @@ ${(window.VS_CLOUD || {}).google ? `      <button class="btn google" data-p="goo
     <label class="fld"><span>Nome da vila</span><input id="pfVila" maxlength="24" value="${esc(S.vila || 'Vila do Jarl')}"></label>
     <div class="actions" style="margin:8px 0 0"><button class="btn ghost sm" data-a="ach">Conquistas${achReady() ? ' •' : ''}</button><button class="btn ghost sm" data-a="tower">Torre: andar ${S.tower.best}</button></div>
     ${acc}
+    <p class="sub" style="margin-top:12px">Levar a vila para outro navegador ou aparelho</p>
+    <p class="desc" style="font-size:13px">${u ? 'Com a conta: basta entrar com o mesmo e-mail no outro navegador.' : 'O jeito mais fácil é entrar com seu e-mail acima. Sem conta, use o código da vila:'}</p>
+    <div class="actions" style="margin:4px 0 0"><button class="btn ghost sm" data-p="xout">Copiar código da vila</button><button class="btn ghost sm" data-p="xin">Colar código</button></div>
     <p class="sub" style="margin-top:12px">Ajustes</p>
     <div class="sets">
       <div class="setrow"><span>Música</span><button class="tg${S.music ? ' on' : ''}" data-p="set" data-k="music">${S.music ? 'Ligada' : 'Desligada'}</button></div>
@@ -2577,20 +2585,28 @@ sheet.addEventListener('click', async e => {
   const k = a.dataset.p; Snd.tap();
   if (k === 'ok') { readNames(); closeSheet(); Cloud.push(true); }
   if (k === 'google') Cloud.google();
+  if (k === 'prof') openProfile();
   if (k === 'install') installApp();
   if (k === 'set') { const key = a.dataset.k; S[key] = !S[key]; save(); if (key === 'music') { if (S.music) { Snd.init(); Music.start(B ? 'batalha' : 'vila'); } else Music.stop(); } if (key === 'voice' && S.voice) say('Skål, Jarl!'); openProfile(); }
   if (k === 'gfx') { S.gfx = a.dataset.k; save(); applyGfx(S.gfx === 'auto' ? (lowHint() ? 'leve' : 'alto') : S.gfx, true); toast('Gráficos: ' + a.textContent); openProfile(); }
   if (k === 'tut') { S.tut = 0; save(); closeSheet(); }
-  if (k === 'mail') { const addr = $('#pfMail').value.trim(); a.disabled = true; if (await Cloud.email(addr)) { openSheet(`<h2>Confira seu e-mail</h2><p class="desc">Mandamos um link para <b>${esc(addr)}</b>. Abra-o neste aparelho para entrar. Pode demorar um minuto; olhe também o spam.</p><div class="actions"><button class="btn" data-a="close">Ok</button></div>`); } else a.disabled = false; }
+  if (k === 'mail') { const addr = $('#pfMail').value.trim(); a.disabled = true; if (await Cloud.email(addr)) { Cloud.mail = addr; openSheet(`<h2>Confira seu e-mail</h2><p class="desc">Mandamos um e-mail para <b>${esc(addr)}</b> (olhe também o spam).</p>
+      <p class="sub">Digite aqui o código que veio no e-mail:</p><div class="mailrow"><input id="pfCode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="código" style="letter-spacing:.2em;text-align:center"><button class="btn sm" data-p="code">Entrar</button></div>
+      <p class="desc" style="font-size:13px">Ou toque no link do e-mail <b>abrindo-o neste mesmo navegador</b>. Se o link abrir em outro navegador, use o código.</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`); } else a.disabled = false; }
+  if (k === 'code') { const c = ($('#pfCode').value || '').replace(/\D/g, ''); if (c.length < 6) { toast('Digite o código do e-mail'); Snd.no(); return; } a.disabled = true; const { error } = await Cloud.sb.auth.verifyOtp({ email: Cloud.mail, token: c, type: 'email' }); if (error) { a.disabled = false; toast('Código errado ou vencido'); Snd.no(); } else { closeSheet(); toast('Conta conectada!'); } }
+  if (k === 'xout') exportVila();
+  if (k === 'xin') openImport();
+  if (k === 'xgo') importVila(($('#xCode').value || '').trim());
   if (k === 'sync') { await Cloud.push(true); openProfile(); }
   if (k === 'out') { await Cloud.logout(); openProfile(); }
 });
 
 async function openRanking(tab) {
   sheetFor = null; Cloud.rankTab = tab || Cloud.rankTab;
-  const t = Cloud.rankTab, head = `<h2>Ranking de Jarls</h2><div class="tabs"><button data-r="power" class="${t === 'power' ? 'on' : ''}">Poder</button><button data-r="wave" class="${t === 'wave' ? 'on' : ''}">Ondas</button></div>`;
+  const t = Cloud.rankTab, head = `<h2>Ranking de Jarls</h2><div class="tabs"><button data-r="power" class="${t === 'power' ? 'on' : ''}">Poder</button><button data-r="wave" class="${t === 'wave' ? 'on' : ''}">Ondas</button><button data-r="tower" class="${t === 'tower' ? 'on' : ''}">Torre</button><button data-r="clan" class="${t === 'clan' ? 'on' : ''}">Clãs</button></div>`;
   if (!Cloud.on()) { openSheet(head + `<p class="desc">O ranking ainda não foi ativado.</p><div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`); return; }
   openSheet(head + `<p class="sub">Carregando…</p>`);
+  if (t === 'tower' || t === 'clan') return openRanking2(t, head);
   let q = Cloud.sb.from('profiles').select('id,jarl,vila,power,best_wave').limit(10);
   q = t === 'power' ? q.order('power', { ascending: false }) : q.order('best_wave', { ascending: false }).order('power', { ascending: false });
   const { data, error } = await q;
@@ -2620,6 +2636,48 @@ $('#btnRank').addEventListener('click', () => { Snd.init(); Snd.tap(); openRanki
 setInterval(() => Cloud.push(), 5000);
 document.addEventListener('visibilitychange', () => { if (document.hidden) Cloud.push(true); });
 Cloud.init();
+/* ========== Código da vila: levar o progresso sem conta ========== */
+const b64 = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return btoa(s); };
+async function packVila() {
+  const txt = JSON.stringify(Object.assign({}, S, { owner: null }));
+  if (window.CompressionStream) { const st = new Blob([txt]).stream().pipeThrough(new CompressionStream('gzip')); return 'VS1z' + b64(new Uint8Array(await new Response(st).arrayBuffer())); }
+  return 'VS1j' + btoa(unescape(encodeURIComponent(txt)));
+}
+async function unpackVila(code) {
+  code = code.replace(/\s+/g, ''); const kind = code.slice(0, 4), raw = atob(code.slice(4)), u8 = Uint8Array.from(raw, c => c.charCodeAt(0));
+  if (kind === 'VS1z') return JSON.parse(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).text());
+  if (kind === 'VS1j') return JSON.parse(decodeURIComponent(escape(raw)));
+  throw new Error('código inválido');
+}
+async function exportVila() {
+  save(); const code = await packVila(); let ok = false;
+  try { await navigator.clipboard.writeText(code); ok = true; } catch (e) {}
+  openSheet(`<h2>Código da vila</h2><p class="desc">${ok ? 'Código <b>copiado</b>! ' : ''}No outro navegador, abra o jogo → Perfil → <b>Colar código</b>. Você pode mandar o código para você mesmo pelo WhatsApp ou e-mail.</p>
+    <textarea id="xShow" readonly rows="5" style="width:100%;font:12px monospace;border-radius:10px;padding:8px;background:#120d09;color:#e8d6a8;border:1px solid #3d3024">${code}</textarea>
+    <p class="sub">Não compartilhe com outras pessoas: quem tiver o código copia a sua vila.</p>
+    <div class="actions"><button class="btn" data-a="close">Ok</button></div>`);
+  const t = $('#xShow'); if (t && !ok) { t.focus(); t.select(); }
+}
+function openImport() {
+  openSheet(`<h2>Colar código da vila</h2><p class="desc">Cole o código copiado no outro navegador. <b>A vila deste navegador será substituída.</b></p>
+    <textarea id="xCode" rows="5" placeholder="VS1…" style="width:100%;font:12px monospace;border-radius:10px;padding:8px;background:#120d09;color:#e8d6a8;border:1px solid #3d3024"></textarea>
+    <div class="actions"><button class="btn" data-p="xgo">Carregar vila</button><button class="btn ghost" data-a="close">Cancelar</button></div>`);
+}
+async function importVila(code) {
+  let R; try { R = await unpackVila(code); } catch (e) { toast('Código inválido'); Snd.no(); return; }
+  if (!R || !R.b || !R.res) { toast('Código inválido'); Snd.no(); return; }
+  if (B) cleanupBattle(); R.last = Date.now(); R.owner = Cloud.user ? Cloud.user.id : null;
+  leaving = true; try { localStorage.setItem(SKEY, JSON.stringify(R)); } catch (e) {}
+  if (Cloud.user) { Cloud.ready = true; S = R; await Cloud.push(true).catch(() => {}); }
+  location.reload();
+}
+// lembrete para quem joga sem conta (uma vez por dia, depois de algum progresso)
+setTimeout(() => {
+  if (!Cloud.on() || Cloud.user || B || CINE || !sheet.hidden || S.nagD === today() || (S.b.salao.lvl || 0) < 2 || (S.tut || 0) < 99) return;
+  S.nagD = today(); save();
+  openSheet(`<h2>Proteja sua vila</h2><p class="desc">Sua vila está salva <b>só neste navegador</b>. Se trocar de navegador, de celular ou limpar os dados, ela some.</p><p class="desc">Entre com seu e-mail (é grátis e rápido) para salvar na nuvem e continuar de onde parou em qualquer aparelho.</p><div class="actions"><button class="btn" data-p="prof">Salvar minha vila</button><button class="btn ghost" data-a="close">Agora não</button></div>`);
+}, 45000);
+
 
 /* ========== Vida na vila: ações e telas ========== */
 const Life = { sel: { lenha: { n: 1, d: 0 }, mina: { n: 1, d: 0 }, caca: { n: 1, d: 0 } } };
@@ -2964,6 +3022,7 @@ function renderSide() {
   const canHero = HERO_IDS.some(id => { const h = hs(id); return h.lvl ? (h.st < 5 && h.sh >= heroStarCost(id, h.st)) : h.sh >= RAR[HEROES[id].rar].need; });
   $('#btnHeroes').classList.toggle('dot', canHero);
   $('#btnSaga').classList.toggle('dot', Date.now() - S.patrol > 2 * 3600e3 || achReady());
+  $('#btnClan').classList.toggle('dot', !!S.clan && cbState().n < CB.tries && S.team.length > 0);
   $('#btnTower').classList.toggle('dot', towerOpen() && S.tower.best === 0); $('#towLv').textContent = towerOpen() ? (S.tower.best ? 'And ' + S.tower.best : 'Nova!') : '🔒';
   { const p = passState(), lv = Math.floor(p.xp / PASS_XP); $('#btnPass').classList.toggle('dot', Array.from({ length: lv }, (_, i) => i).some(i => !p.got.includes(i))); $('#passLv').textContent = 'Nv ' + lv; }
   $('#btnArena').classList.toggle('dot', arenaState().used < ARENA_TICKETS && S.team.length > 0 && S.b.salao.lvl >= 3);
@@ -3176,6 +3235,156 @@ sheet.addEventListener('click', e => {
     case 'achget': { const A = ACH.find(x => x.id === k); if (!A) break; const i = S.ach[k] || 0; if (i >= A.t.length || A.v() < A.t[i]) break; S.ach[k] = i + 1; const r = achRew(A, i); for (const x in r) if (r[x]) gain(x, r[x]); Snd.chime(); toast(`Conquista: ${A.n} ${'★'.repeat(i + 1)}`); save(); dirty = true; openAch(); break; }
   }
 });
+
+/* ========== Ranking da Torre e dos Clãs ========== */
+async function openRanking2(t, head) {
+  const me = Cloud.user && Cloud.user.id, close = `<div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`;
+  let rows = '', err = null;
+  if (t === 'tower') {
+    const { data, error } = await Cloud.sb.from('tower').select('user_id,jarl,best').order('best', { ascending: false }).limit(15); err = error;
+    if (data) rows = data.map((r, i) => `<div class="rk${r.user_id === me ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="who"><b>${esc(r.jarl)}</b></span><span class="val">Andar ${r.best}</span></div>`).join('');
+  } else {
+    const { data, error } = await Cloud.sb.from('clan_boss').select('clan_id,dmg').eq('week', weekNo()).limit(1000); err = error;
+    if (data) { const tot = {}; data.forEach(r => tot[r.clan_id] = (tot[r.clan_id] || 0) + r.dmg); const ids = Object.keys(tot).sort((a, b) => tot[b] - tot[a]).slice(0, 15);
+      const names = {}; if (ids.length) { const c = await Cloud.sb.from('clans').select('id,name,tag').in('id', ids); (c.data || []).forEach(x => names[x.id] = x); }
+      rows = ids.map((id, i) => `<div class="rk${S.clan && S.clan.id === id ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="who"><b>${esc(names[id] ? names[id].name : 'Clã')}</b><small>${names[id] ? '[' + esc(names[id].tag) + ']' : ''} · dano no ${CB.name} esta semana</small></span><span class="val">${fmt(tot[id])}</span></div>`).join(''); }
+  }
+  if (sheet.hidden || !sheet.querySelector('.tabs')) return;
+  if (err) { openSheet(head + `<p class="req">Esse ranking ainda não está ativo.</p>` + close); return; }
+  openSheet(head + `<div class="rklist">${rows || '<p class="sub">Ninguém aqui ainda. Seja o primeiro!</p>'}</div>` + (me ? '' : `<p class="desc" style="font-size:14px">Entre na sua conta para aparecer no ranking.</p>`) + close);
+}
+
+/* ========== Clãs: grupo, chat e chefe semanal ========== */
+const CB = { name: 'Ymir, o Gigante Ancestral', tries: 3, limit: 40, tiers: [[100e3, { runes: 15, food: 1500 }], [300e3, { mead: 1, iron: 600 }], [700e3, { runes: 30, gear: 1 }], [1.5e6, { mead: 2, saga: 6 }], [3e6, { mead: 3, gear: 1, diamante: 1 }]] };
+const CLAN_MAX = 30;
+const cbState = () => { const w = weekNo(); if (S.cb.w !== w) S.cb = { w, got: [], d: '', n: 0, best: 0 }; if (S.cb.d !== today()) { S.cb.d = today(); S.cb.n = 0; } return S.cb; };
+let clanTab = 'chat', chatPoll = 0, clanTotal = 0;
+const cleanTxt = (t, n) => (t || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
+async function myClan() {
+  if (!Cloud.user) return null;
+  const { data, error } = await Cloud.sb.from('clan_members').select('clan_id,role,clans(id,name,tag,leader)').eq('user_id', Cloud.user.id).maybeSingle();
+  if (error) { Cloud.clanOk = false; throw error; }
+  S.clan = data && data.clans ? { id: data.clans.id, name: data.clans.name, tag: data.clans.tag, leader: data.clans.leader } : null; save(); return S.clan;
+}
+async function openClan(tab) {
+  sheetFor = null; clearInterval(chatPoll); if (tab) clanTab = tab;
+  const close = `<div class="actions"><button class="btn ghost" data-a="close">Fechar</button></div>`;
+  if (!Cloud.on() || !Cloud.user) { openSheet(`<h2>Clãs</h2><p class="desc">Junte-se a outros jarls: conversem no chat do clã e derrotem juntos o chefe da semana, ${CB.name}, para ganhar prêmios.</p><p class="desc">Para entrar num clã você precisa entrar na sua conta.</p><div class="actions"><button class="btn" data-p="prof">Entrar na conta</button><button class="btn ghost" data-a="close">Fechar</button></div>`); return; }
+  if (S.b.salao.lvl < 3) { openSheet(`<h2>Clãs</h2><p class="desc">Os clãs se abrem com o Salão do Jarl no nível 3.</p>` + close); return; }
+  openSheet(`<h2>Clãs</h2><p class="sub">Carregando…</p>`);
+  let c; try { c = await myClan(); } catch (e) { openSheet(`<h2>Clãs</h2><p class="req">Os clãs ainda não foram ativados no servidor.</p>` + close); return; }
+  if (!c) return openClanList();
+  const t = clanTab, head = `<h2>${esc(c.name)} <small style="color:var(--gold-hi)">[${esc(c.tag)}]</small></h2><div class="tabs"><button data-cl="chat" class="${t === 'chat' ? 'on' : ''}">Chat</button><button data-cl="boss" class="${t === 'boss' ? 'on' : ''}">Chefe</button><button data-cl="mem" class="${t === 'mem' ? 'on' : ''}">Membros</button></div>`;
+  if (t === 'chat') {
+    openSheet(head + `<div class="chat" id="chatBox"><p class="sub">Carregando…</p></div><div class="mailrow"><input id="chatIn" maxlength="200" placeholder="Escreva para o clã…" autocomplete="off"><button class="btn sm" data-c2="send">Enviar</button></div>` + close);
+    await loadChat(); chatPoll = setInterval(() => { if (sheet.hidden || !$('#chatBox')) { clearInterval(chatPoll); return; } loadChat(); }, 6000);
+  } else if (t === 'mem') {
+    const { data } = await Cloud.sb.from('clan_members').select('user_id,jarl,power,role').eq('clan_id', c.id).order('power', { ascending: false });
+    const { data: dm } = await Cloud.sb.from('clan_boss').select('user_id,dmg').eq('clan_id', c.id).eq('week', weekNo()); const dd = {}; (dm || []).forEach(r => dd[r.user_id] = r.dmg);
+    openSheet(head + `<p class="sub">${(data || []).length}/${CLAN_MAX} membros</p><div class="rklist">${(data || []).map((m, i) => `<div class="rk${m.user_id === Cloud.user.id ? ' me' : ''}"><span class="pos">${i + 1}</span><span class="who"><b>${esc(m.jarl)}${c.leader === m.user_id ? ' 👑' : ''}</b><small>poder ${fmt(m.power || 0)} · dano no chefe ${fmt(dd[m.user_id] || 0)}</small></span></div>`).join('')}</div>
+      <div class="actions"><button class="btn ghost" data-c2="leave">Sair do clã</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
+  } else {
+    const st = cbState(); const { data } = await Cloud.sb.from('clan_boss').select('dmg').eq('clan_id', c.id).eq('week', weekNo());
+    clanTotal = (data || []).reduce((a, r) => a + r.dmg, 0); const top = CB.tiers[CB.tiers.length - 1][0];
+    openSheet(head + `<p class="sub">Chefe da semana: <b style="color:var(--gold-hi)">${CB.name}</b> · termina em ${fmtT(evEndsIn() / 1000)}</p>
+      <div class="stat"><span>Dano do clã</span><span><b style="color:var(--gold-hi);font-size:18px">${fmt(clanTotal)}</b></span></div><div class="hbar gold"><i style="width:${Math.min(100, clanTotal / top * 100)}%"></i></div>
+      <div class="tiers">${CB.tiers.map(([p, r], i) => { const got = st.got.includes(i), ok = clanTotal >= p; return `<div class="tier${got ? ' done' : ok ? ' ok' : ''}"><b>${fmt(p)}</b><span>${Object.entries(r).map(([k, v]) => `${icoSVG(k)}${v}`).join(' ')}</span>${got ? '✓' : ok ? `<button class="btn sm" data-c2="tier" data-k="${i}">Pegar</button>` : ''}</div>`; }).join('')}</div>
+      <p class="sub">Cada membro tem ${CB.tries} ataques por dia, de ${CB.limit} segundos. Todo o dano soma para o clã, e todos ganham os prêmios. Seu melhor ataque: ${fmt(st.best)}</p>
+      <div class="actions"><button class="btn" data-c2="atk" ${st.n < CB.tries && S.team.length ? '' : 'disabled'}>Atacar (${CB.tries - st.n} hoje)</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
+  }
+}
+async function loadChat() {
+  const c = S.clan; if (!c) return; const { data, error } = await Cloud.sb.from('clan_chat').select('user_id,jarl,msg,created_at').eq('clan_id', c.id).order('created_at', { ascending: false }).limit(50);
+  const el = $('#chatBox'); if (!el || error) return; const stick = el.scrollTop + el.clientHeight >= el.scrollHeight - 30;
+  el.innerHTML = (data || []).reverse().map(m => `<div class="cmsg${m.user_id === Cloud.user.id ? ' me' : ''}"><b>${esc(m.jarl)}</b><span>${esc(m.msg)}</span><small>${new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small></div>`).join('') || '<p class="sub">Nenhuma mensagem ainda. Diga olá ao clã!</p>';
+  if (stick) el.scrollTop = el.scrollHeight;
+}
+async function openClanList() {
+  const { data } = await Cloud.sb.from('clans').select('id,name,tag,descr,clan_members(count)').order('created_at', { ascending: false }).limit(30);
+  const list = (data || []).map(c => ({ ...c, n: c.clan_members && c.clan_members[0] ? c.clan_members[0].count : 0 })).filter(c => c.n < CLAN_MAX && c.n > 0).sort((a, b) => b.n - a.n);
+  openSheet(`<h2>Clãs</h2><p class="sub">Entre num clã para conversar e derrotar o chefe da semana juntos</p>
+    <div class="opps">${list.map(c => `<div class="opp"><div><b>${esc(c.name)} [${esc(c.tag)}]</b><small>${c.n}/${CLAN_MAX} membros${c.descr ? ' · ' + esc(c.descr) : ''}</small></div><button class="btn sm" data-c2="join" data-k="${c.id}">Entrar</button></div>`).join('') || '<p class="sub">Ainda não há clãs. Crie o primeiro!</p>'}</div>
+    <p class="sub" style="margin-top:10px">Criar um clã</p>
+    <label class="fld"><span>Nome do clã</span><input id="clName" maxlength="20" placeholder="Lobos do Norte"></label>
+    <label class="fld"><span>Sigla (2 a 4 letras)</span><input id="clTag" maxlength="4" placeholder="LOBO" style="text-transform:uppercase"></label>
+    <label class="fld"><span>Frase do clã</span><input id="clDesc" maxlength="60" placeholder="Ativos todo dia, skål!"></label>
+    <div class="actions"><button class="btn" data-c2="create">Criar clã</button><button class="btn ghost" data-a="close">Fechar</button></div>`);
+}
+async function clanAct(a, k) {
+  const U = Cloud.user && Cloud.user.id; if (!U) return;
+  if (a === 'create') {
+    const name = cleanTxt($('#clName').value, 20), tag = cleanTxt($('#clTag').value, 4).toUpperCase().replace(/[^A-Z0-9]/g, ''), descr = cleanTxt($('#clDesc').value, 60);
+    if (name.length < 3 || tag.length < 2) { toast('Nome com 3+ letras e sigla com 2 a 4'); Snd.no(); return; }
+    const { data, error } = await Cloud.sb.from('clans').insert({ name, tag, descr, leader: U }).select('id').single();
+    if (error) { toast(/duplicate|unique/i.test(error.message) ? 'Já existe um clã com esse nome' : 'Não foi possível criar o clã'); Snd.no(); return; }
+    await Cloud.sb.from('clan_members').insert({ user_id: U, clan_id: data.id, jarl: S.jarl || 'Jarl', power: power(), role: 'lider' });
+    Snd.chime(); toast(`Clã ${name} criado!`); clanTab = 'chat'; openClan(); return;
+  }
+  if (a === 'join') {
+    const { count } = await Cloud.sb.from('clan_members').select('user_id', { count: 'exact', head: true }).eq('clan_id', k);
+    if (count >= CLAN_MAX) { toast('Clã cheio'); return; }
+    const { error } = await Cloud.sb.from('clan_members').insert({ user_id: U, clan_id: k, jarl: S.jarl || 'Jarl', power: power(), role: 'membro' });
+    if (error) { toast('Não foi possível entrar'); Snd.no(); return; }
+    await Cloud.sb.from('clan_chat').insert({ clan_id: k, user_id: U, jarl: S.jarl || 'Jarl', msg: '⚔ entrou no clã!' });
+    Snd.chime(); clanTab = 'chat'; openClan(); return;
+  }
+  if (a === 'leave') {
+    if (!confirmLeave) { confirmLeave = true; toast('Toque de novo para confirmar a saída'); setTimeout(() => confirmLeave = false, 3000); return; }
+    const c = S.clan; if (!c) return;
+    if (c.leader === U) { const { data } = await Cloud.sb.from('clan_members').select('user_id').eq('clan_id', c.id).neq('user_id', U).order('joined_at').limit(1);
+      if (data && data.length) await Cloud.sb.from('clans').update({ leader: data[0].user_id }).eq('id', c.id); else { await Cloud.sb.from('clan_members').delete().eq('user_id', U); await Cloud.sb.from('clans').delete().eq('id', c.id); S.clan = null; save(); openClan(); return; } }
+    await Cloud.sb.from('clan_members').delete().eq('user_id', U); S.clan = null; save(); toast('Você saiu do clã'); openClan(); return;
+  }
+  if (a === 'send') {
+    const inp = $('#chatIn'), msg = cleanTxt(inp.value, 200); if (!msg || !S.clan) return; inp.value = '';
+    const { error } = await Cloud.sb.from('clan_chat').insert({ clan_id: S.clan.id, user_id: U, jarl: S.jarl || 'Jarl', msg }); if (error) toast('Mensagem não enviada'); loadChat(); return;
+  }
+  if (a === 'tier') { const i = +k, st = cbState(), [p, r] = CB.tiers[i]; if (st.got.includes(i) || clanTotal < p) return; st.got.push(i); for (const x in r) gain(x, r[x]); Snd.chime(); save(); dirty = true; openClan('boss'); return; }
+  if (a === 'atk') startClanBoss();
+}
+let confirmLeave = false;
+sheet.addEventListener('click', e => {
+  const t = e.target.closest('[data-cl]'); if (t) { Snd.tap(); openClan(t.dataset.cl); return; }
+  const a = e.target.closest('[data-c2]'); if (a) { Snd.tap(); clanAct(a.dataset.c2, a.dataset.k); }
+});
+sheet.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'chatIn') clanAct('send'); });
+function startClanBoss() {
+  const st = cbState(); if (B || CINE || !S.clan || st.n >= CB.tries || !S.team.length) return;
+  if (!restReady) { toast('Carregando… só um instante'); loadRest().then(startClanBoss); return; }
+  closeSheet(); Snd.init(); buildArena(3); setAmbience(3);
+  const lv = .95 * Math.pow(1.058, Math.min(47, S.camp.next));
+  B = { spd: S.bspd || 1, mode: 'clanboss', island: true, lvlF: lv, wave: 1, t: 0, units: [], proj: [], blds: [], bhp: {}, killed: 0, total: 1, queue: [], heroDown: 0, skillCd: 0, over: false, deployed: { ...S.army }, endT: 0, walls: null, shooters: [], later: [], exD: {},
+    bounds: { x0: ARENA.x - 13, x1: ARENA.x + 13, z0: ARENA.z - 8, z1: ARENA.z + 8 }, rally: [ARENA.x - 4.5, ARENA.z] };
+  glowEyes();
+  B.hero = mkUnit('ally', 'hero', ARENA.x - 7, ARENA.z); activate(B.hero);
+  S.team.forEach((id, i) => { const u = mkUnit('ally', 'h_' + id, ARENA.x - 6.3, ARENA.z - 1.4 + i * 1.4); u.spawnAt = .2 + i * .2; B.queue.push(u); });
+  let k = 0; ['hus', 'war', 'arc'].forEach(type => { for (let i = 0; i < (S.army[type] || 0); i++) { const u = mkUnit('ally', type, ARENA.x - 8 - Math.random(), ARENA.z + (Math.random() - .5) * 5); u.spawnAt = .5 + k++ * .12; B.queue.push(u); } });
+  B.exD.x_ymir = { name: CB.name, model: 'Skeleton_Warrior', r: 'Skeleton_Axe', l: 'Skeleton_Shield_Small_A', scale: .95, hp: 1e8, dmg: Math.round(40 * Math.pow(lv, .8)), rate: 1.9, range: 2, speed: .7, exact: true };
+  const boss = mkUnit('enemy', 'x_ymir', ARENA.x + 6, ARENA.z); boss.spawnAt = .8; boss.rise = true; B.queue.push(boss); B.boss = boss;
+  [10, 22, 32].forEach(t0 => { for (let i = 0; i < 3; i++) { const u = mkUnit('enemy', ['minion', 'warrior', 'rogue'][i], ARENA.x + 8, ARENA.z - 3 + i * 3); u.spawnAt = t0; u.rise = true; B.queue.push(u); B.total++; } });
+  Object.assign(CAMB, { x0: ARENA.x - 12, x1: ARENA.x + 12, z0: ARENA.z - 8, z1: ARENA.z + 10 });
+  B.follow = true; B.slow = 1; B.oldD = cam.d; cam.d = 17; cam.x = ARENA.x - 3; cam.z = ARENA.z + 2; placeCamera();
+  document.body.classList.add('battle', 'camp'); $('#bhud').hidden = false; $('#bWave').textContent = 'Chefe do clã';
+  folk.forEach(x => x.o.visible = false); guards.forEach(g2 => g2.o.visible = false);
+  st.n++; save(); Music.start('batalha'); Snd.horn(); say('Ymir desperta! Pelo clã!');
+}
+function stepClanBoss() {
+  if (B.over || !B.boss) return; const dmg = Math.round(B.boss.max ? B.boss.max - Math.max(0, B.boss.hp) : 0), left = Math.max(0, CB.limit - B.t);
+  B.cbDmg = dmg; if (B.boss.bar) B.boss.bar.bg.visible = B.boss.bar.fg.visible = false;
+  const el = $('#bWave'); if (el) el.textContent = `Ymir · dano ${fmt(dmg)} · ${Math.ceil(left)}s`;
+  if (B.t >= CB.limit) endBattle(true);
+}
+async function endClanBoss() {
+  const dmg = B.cbDmg || 0, st = cbState(), U = Cloud.user && Cloud.user.id, c = S.clan; st.best = Math.max(st.best, dmg);
+  const rew = { runes: Math.min(15, 2 + Math.floor(dmg / 4000)), food: Math.min(3000, 200 + Math.floor(dmg / 20)) }; for (const k in rew) gain(k, rew[k]);
+  dcount('clan'); Snd.done(); say('Bom golpe! O clã agradece.'); save(); dirty = true;
+  B.pendEnd = { win: true, t: .7, html: `<h2>Ataque ao Ymir!</h2><p class="sub">Você causou</p><div class="bigdmg">${fmt(dmg)}</div><p class="sub">de dano para o clã ${c ? esc(c.name) : ''}</p><div class="costs big">${Object.entries(rew).map(([k, v]) => `<div class="cost">${icoSVG(k)}+${fmt(v)}</div>`).join('')}</div><div class="actions"><button class="btn" data-cl="boss">Ver o clã</button><button class="btn ghost" data-a="home">Vila</button></div>` };
+  if (U && c && dmg > 0) {
+    const w = weekNo(), { data } = await Cloud.sb.from('clan_boss').select('dmg,clan_id').eq('week', w).eq('user_id', U).maybeSingle();
+    await Cloud.sb.from('clan_boss').upsert({ week: w, user_id: U, clan_id: c.id, dmg: Math.min(5e7, (data && data.clan_id === c.id ? data.dmg : 0) + dmg) });
+  }
+}
+$('#btnClan').addEventListener('click', () => { Snd.init(); Snd.tap(); openClan(); });
 $('#btnTower').addEventListener('click', () => { Snd.init(); Snd.tap(); openTower(); });
 $('#btnPass').addEventListener('click', () => { Snd.init(); Snd.tap(); openPass(); });
 $('#btnArena').addEventListener('click', () => { Snd.init(); Snd.tap(); openArena(); });
@@ -3369,7 +3578,7 @@ loadAll().then(() => {
     S.intro = true; save();
   } else if (offlineGain) toast(`Bem-vindo de volta! A vila produziu por ${fmtT(Math.min(offlineGain, 8 * 3600e3) / 1000)}`);
 }).catch(err => { $('#loadMsg').textContent = 'Não foi possível carregar os modelos 3D. Verifique a conexão e recarregue.'; console.error(err); });
-const GAME_VERSION = 18;
+const GAME_VERSION = 20;
 /* instalar como app */
 let installEvt = null;
 const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -3392,4 +3601,4 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && !B && !CINE) { reloaded = true; save(); location.reload(); } });
   addEventListener('load', () => navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => { r.update(); setInterval(() => r.update(), 5 * 60e3); }).catch(() => {}));
 }
-window.__vs = { startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
+window.__vs = { startClanBoss, openClan, exportVila, packVila, unpackVila, startTower, openTower, openAch, achReady, finishEnding, startCampG: g => startCamp(g), Music, Snd, camera, setFace, faceFor, finishExp, harvest, curralCollect, cineT: () => CINE && CINE.t, S, tick, upgrade: id => upgrade(plotById(id)), collect: id => collect(plotById(id)), cam, placeCamera, startBattle, heroSkill, endBattle, get B() { return B; }, sim: sec => { let t = 0; while (t < sec && B) { stepBattle(.05); t += .05; } return t; }, train, renderSheet, openBuilding: id => openBuilding(plotById(id)) };
